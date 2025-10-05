@@ -1,5 +1,6 @@
 package com.example.travel_planning
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,7 +20,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    MainScreen(
+                        onAddTripClick = {
+                            val intent = Intent(this, AddTripActivity::class.java)
+                            startActivity(intent)
+                        }
+                    )
                 }
             }
         }

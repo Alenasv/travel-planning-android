@@ -52,7 +52,9 @@ data class GalleryItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    onAddTripClick: () -> Unit
+) {
     val listItems = remember {
         mutableStateOf(
             listOf(
@@ -87,7 +89,7 @@ fun MainScreen() {
             .statusBarsPadding(),
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* новая поездка */ },
+                onClick = onAddTripClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
@@ -125,7 +127,6 @@ fun MainScreen() {
                     )
                 }
             }
-
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -154,9 +155,9 @@ fun MainScreen() {
                     ListItemCard(item = item)
                 }
             }
-            }
         }
     }
+}
 
 @Composable
 fun GalleryCard(item: GalleryItem) {
@@ -247,6 +248,8 @@ fun ListItemCard(item: ListItem) {
 @Composable
 fun MainScreenPreview() {
     TravelPlanningTheme {
-        MainScreen()
+        MainScreen(
+            onAddTripClick = {}
+        )
     }
 }
