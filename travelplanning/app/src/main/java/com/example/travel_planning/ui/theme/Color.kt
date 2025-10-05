@@ -1,4 +1,4 @@
-package com.example.travel_planning.ui.theme.theme
+package com.example.travel_planning.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
@@ -12,3 +12,6 @@ val Pink40 = Color(0xFF7D5260)
 
 val Blue40 = Color(0xFF1E88E5)
 val Blue80 = Color(0xFF64B5F6)
+
+val LightBlue = Color(0xFFE3F2FD)
+val DarkBlue = Color(0xFF0D47A1)

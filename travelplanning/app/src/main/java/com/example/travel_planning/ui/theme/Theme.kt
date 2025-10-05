@@ -1,4 +1,4 @@
-package com.example.travel_planning.ui.theme.theme
+package com.example.travel_planning.ui.theme
 
 import android.app.Activity
 import android.os.Build
@@ -23,7 +23,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Blue40,
+    primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40,
     background = Color(0xFFFFFBFE),

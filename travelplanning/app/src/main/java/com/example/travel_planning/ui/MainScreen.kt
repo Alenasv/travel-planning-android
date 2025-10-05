@@ -7,19 +7,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,16 +31,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.travel_planning.ui.theme.theme.TravelPlanningTheme
+import com.example.travel_planning.ui.theme.TravelPlanningTheme
 
 data class ListItem(
     val id: Int,
     val title: String,
     val description: String,
-    var isChecked: Boolean = false
+)
+
+data class GalleryItem(
+    val id: Int,
+    val color: Color,
+    val title: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,16 +58,26 @@ fun MainScreen() {
             listOf(
                 ListItem(
                     id = 1,
-                    title = "List item",
+                    title = "title",
                     description = "description"
                 ),
                 ListItem(
                     id = 2,
-                    title = "List item",
+                    title = "title",
                     description = "description"
                 ),
-
             )
+        )
+    }
+
+    val galleryItems = remember {
+        listOf(
+            GalleryItem(1, Color(0xFFFF6B6B), "Летний сад"),
+            GalleryItem(2, Color(0xFF4ECDC4), "Петропавловская крепость"),
+            GalleryItem(3, Color(0xFF45B7D1), "Исаакиевский собор"),
+            GalleryItem(4, Color(0xFF96CEB4), "Дворцовая площадь"),
+            GalleryItem(5, Color(0xFFF7DC6F), "Крейсер Аврора"),
+            GalleryItem(6, Color(0xFFBB8FCE), "Казанский собор")
         )
     }
 
@@ -105,6 +125,18 @@ fun MainScreen() {
                     )
                 }
             }
+
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(galleryItems) { item ->
+                    GalleryCard(item = item)
+                }
+            }
+
             Text(
                 text = "Мои записи",
                 style = MaterialTheme.typography.headlineSmall,
@@ -119,15 +151,42 @@ fun MainScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(listItems.value) { item ->
-                    ListItemCard(
-                        item = item,
-                        onCheckedChange = { isChecked ->
-                            listItems.value = listItems.value.map {
-                                if (it.id == item.id) it.copy(isChecked = isChecked) else it
-                            }
-                        }
-                    )
+                    ListItemCard(item = item)
                 }
+            }
+            }
+        }
+    }
+
+@Composable
+fun GalleryCard(item: GalleryItem) {
+    Card(
+        onClick = { /* переход на карточку из гелереи */ },
+        modifier = Modifier
+            .size(200.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(item.color)
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(13.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
+                )
             }
         }
     }
@@ -135,12 +194,9 @@ fun MainScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListItemCard(
-    item: ListItem,
-    onCheckedChange: (Boolean) -> Unit
-) {
+fun ListItemCard(item: ListItem) {
     Card(
-        onClick = { /* метод */ },
+        onClick = { /* обработка клика по карточке */ },
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
@@ -156,29 +212,37 @@ fun ListItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Checkbox(
-                    checked = item.isChecked,
-                    onCheckedChange = onCheckedChange
-                )
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
-                        .padding(start = 8.dp)
                         .weight(1f)
+                        .fillMaxWidth()
+                        .padding(start = 48.dp, top = 4.dp)
                 )
+
+                IconButton(
+                    onClick = { /* Обработка нажатия на меню */ }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Меню",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
             Text(
                 text = item.description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.padding(start = 48.dp, top = 4.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, top = 4.dp)
             )
         }
     }
 }
-
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {

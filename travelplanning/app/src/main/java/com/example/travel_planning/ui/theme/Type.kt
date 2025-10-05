@@ -1,4 +1,4 @@
-package com.example.travel_planning.ui.theme.theme
+package com.example.travel_planning.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
