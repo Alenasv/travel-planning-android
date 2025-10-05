@@ -35,10 +35,10 @@ data class Trip(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripEditScreen(
+    onAddPlaceClick: () -> Unit,
     trip: Trip? = null,
     onBackClick: () -> Unit,
-    onSaveTrip: (Trip) -> Unit,
-    onDeleteTrip: (() -> Unit)? = null
+    onSaveTrip: (Trip) -> Unit
 ) {
     val isEditing = trip != null
 
@@ -108,7 +108,7 @@ fun TripEditScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {/*  переход на категории */ },
+                onClick = onAddPlaceClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -302,7 +302,8 @@ fun TripEditScreenPreview() {
     MaterialTheme {
         TripEditScreen(
             onBackClick = {},
-            onSaveTrip = {}
+            onSaveTrip = {},
+            onAddPlaceClick = {}
         )
     }
 }

@@ -26,6 +26,9 @@
         <activity
             android:name=".AddTripActivity"
             android:exported="false" />
+        <activity
+            android:name=".AddPlaceActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
