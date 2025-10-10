@@ -11,19 +11,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.travel_planning.ui.Trip
+
+
+data class Place(
+    val id: Int,
+    val title: String,
+    val address: String,
+    val category: String,
+    val description: String
+)
+
+data class Trip(
+    val id: Int = 0,
+    val name: String = ""
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
     onBackClick: () -> Unit,
-    onSaveTrip: (Trip) -> Unit
+    onSaveTrip: (Trip) -> Unit,
+    onPlaceClick: (Place) -> Unit
 ) {
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -37,7 +50,7 @@ fun AddToRouteScreen(
                 ),
                 title = {
                     Text(
-                        "Выбори места",
+                        "Выбери места",
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold
                     )
@@ -53,7 +66,9 @@ fun AddToRouteScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = {/* сохранение */},
+                        onClick = {
+                            onSaveTrip(Trip())
+                        },
                     ) {
                         Icon(
                             Icons.Default.Check,
@@ -95,7 +110,10 @@ fun AddToRouteScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(getSamplePlaces()) { place ->
-                    PlaceCard(place = place)
+                    PlaceCard(
+                        place = place,
+                        onPlaceClick = { onPlaceClick(place) }
+                    )
                 }
             }
         }
@@ -103,106 +121,130 @@ fun AddToRouteScreen(
 }
 
 @Composable
-fun PlaceCard(place: Place) {
+fun PlaceCard(
+    place: Place,
+    onPlaceClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.8f),
         shape = RoundedCornerShape(20.dp),
+        onClick = onPlaceClick,
         elevation = CardDefaults.cardElevation(
             defaultElevation = 6.dp,
             pressedElevation = 2.dp
         ),
     ) {
-        Box(
+        Column(
             modifier = Modifier.fillMaxSize()
         ) {
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .weight(0.65f)
                     .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.3f)
-                            ),
-                            startY = 0f,
-                            endY = 120f
+                        color = Color(0xFFF5F5F5),
+                        shape = RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = 0.dp,
+                            bottomEnd = 0.dp
                         )
-                    )
-            )
-                //возможно добавить возможность добавлять в избранное
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Картинка",
+                    color = Color(0xFF9E9E9E),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
+                    .fillMaxWidth()
+                    .weight(0.35f)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Spacer(modifier = Modifier.weight(1f))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = place.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                Column {
+                    AdaptiveTitleText(place.title)
 
                     Text(
                         text = place.category,
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(bottom = 6.dp)
+                        color = MaterialTheme.colorScheme.outline
                     )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedButton(
-                                onClick = {/* добавить место в опр день */   },
-                                modifier = Modifier.height(30.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.primary)
-                            )   {
-                                    Text(
-                                        text = "Добавить",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                        }
-                    }
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        // добавить место в определенный день
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        text = "Добавить",
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }
+    }
+}
+@Composable
+fun AdaptiveTitleText(text: String) {
+    val baseFontSize = MaterialTheme.typography.titleSmall.fontSize
+    var fontSize by remember { mutableStateOf(baseFontSize) }
+    var readyToDraw by remember { mutableStateOf(false) }
 
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall.copy(fontSize = fontSize),
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        softWrap = false,
+        onTextLayout = { result ->
+            if (!readyToDraw && result.hasVisualOverflow) {
+                fontSize *= 0.9
+            } else {
+                readyToDraw = true
+            }
+        },
+        modifier = Modifier.padding(bottom = 4.dp)
+    )
 }
 
-data class Place(
-    val id: Int,
-    val title: String,
-    val category: String,
-)
 
 fun getSamplePlaces(): List<Place> {
     return listOf(
         Place(
             id = 1,
-            title = "Название",
-            category = "категория"),
+            title = "Эрмитаж",
+            category = "Музей",
+            address= "адрес",
+            description= "описание"
+        ),
         Place(
             id = 2,
-            title = "Название",
-            category = "категория"
+            title = "Петропавловская крепость",
+            category = "История",
+            address= "адрес",
+            description= "описание"
         ),
         Place(
             id = 3,
-            title = "Название",
-            category = "категория",
+            title = "Исаакиевский собор",
+            category = "Архитектура",
+            address= "адрес",
+            description= "описание"
         )
-
     )
 }
 
@@ -210,7 +252,20 @@ fun getSamplePlaces(): List<Place> {
 @Composable
 fun PreviewAddToRouteScreen() {
     MaterialTheme {
-        AddToRouteScreen( onBackClick = {},
-            onSaveTrip = {})
+        AddToRouteScreen(
+            onBackClick = {},
+            onSaveTrip = {},
+            onPlaceClick = {}
+        )
+    }
+}
+
+@Composable
+fun PreviewPlaceCard() {
+    MaterialTheme {
+        PlaceCard(
+            place = Place(1, "Тестовое место", "adres","category","description"),
+            onPlaceClick = {}
+        )
     }
 }

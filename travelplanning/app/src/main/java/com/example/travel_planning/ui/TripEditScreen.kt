@@ -1,5 +1,6 @@
 package com.example.travel_planning.ui
 
+import Place
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,17 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-data class PlaceItem(
-    val id: Int,
-    val title: String,
-    val description: String
-)
 
 data class Trip(
     val id: Int = 0,
     val title: String = "",
     val date: String = "",
-    val places: List<PlaceItem> = emptyList(),
+    val places: List<Place> = emptyList(),
     val notes: String = ""
 )
 
@@ -45,7 +41,7 @@ fun TripEditScreen(
     var title by remember { mutableStateOf(trip?.title ?: "") }
     var date by remember { mutableStateOf(trip?.date ?: "") }
     var notes by remember { mutableStateOf(trip?.notes ?: "") }
-    val places = remember { mutableStateListOf<PlaceItem>() }
+    val places = remember { mutableStateListOf<Place>() }
 
 
     if (isEditing && trip?.places?.isNotEmpty() == true && places.isEmpty()) {
@@ -211,7 +207,7 @@ fun TripEditScreen(
 
 @Composable
 fun PlaceListItem(
-    place: PlaceItem,
+    place: Place,
     onRemoveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
