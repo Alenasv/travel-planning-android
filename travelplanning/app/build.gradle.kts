@@ -53,14 +53,14 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-
+    implementation(libs.gson)
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
-
+    implementation(libs.coil)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)

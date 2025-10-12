@@ -18,6 +18,8 @@ composeFoundation = "1.6.7"
 composeMaterial3 = "1.2.1"
 
 [libraries]
+coil ={group="io.coil-kt",name= "coil-compose", version="2.4.0"}
+gson = { group = "com.google.code.gson", name = "gson", version = "2.10.1" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

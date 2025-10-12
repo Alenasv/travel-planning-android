@@ -1,29 +1,36 @@
-import androidx.compose.foundation.background
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.runtime.remember
+
+import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 
 data class Place(
-    val id: Int,
-    val title: String,
+    val id: String,
+    val name: String,
     val address: String,
+    val work_time: String,
     val category: String,
-    val description: String
+    val description: String,
+    val image_filename: String
 )
 
 data class Trip(
@@ -34,6 +41,7 @@ data class Trip(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
+    places: List<Place>,
     onBackClick: () -> Unit,
     onSaveTrip: (Trip) -> Unit,
     onPlaceClick: (Place) -> Unit
@@ -105,15 +113,11 @@ fun AddToRouteScreen(
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(getSamplePlaces()) { place ->
-                    PlaceCard(
-                        place = place,
-                        onPlaceClick = { onPlaceClick(place) }
-                    )
+                items(places) { place ->
+                    PlaceCard(place = place, onPlaceClick = { onPlaceClick(place) })
                 }
             }
         }
@@ -131,74 +135,68 @@ fun PlaceCard(
             .aspectRatio(0.8f),
         shape = RoundedCornerShape(20.dp),
         onClick = onPlaceClick,
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 6.dp,
-            pressedElevation = 2.dp
-        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.65f)
-                    .background(
-                        color = Color(0xFFF5F5F5),
-                        shape = RoundedCornerShape(
-                            topStart = 20.dp,
-                            topEnd = 20.dp,
-                            bottomStart = 0.dp,
-                            bottomEnd = 0.dp
-                        )
-                    ),
+                    .weight(0.65f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Картинка",
-                    color = Color(0xFF9E9E9E),
-                    style = MaterialTheme.typography.bodySmall
+                val painter = rememberAsyncImagePainter(
+                    model = "file:///android_asset/${place.image_filename}"
+                )
+                Image(
+                    painter = painter,
+                    contentDescription = place.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.35f)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
                 verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    AdaptiveTitleText(place.title)
-
-                    Text(
-                        text = place.category,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-
+            ) { Column {
+                AdaptiveTitleText(place.name)
+                Text(
+                    text = place.category,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
                 OutlinedButton(
-                    onClick = {
-                        // добавить место в определенный день
-                    },
+                    onClick = { /* добавить место в определенный день */ },
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(vertical = 0.9.dp)
+                        .height(36.dp)
+                        .align(Alignment.CenterHorizontally),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = "Добавить",
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
+
+
+
             }
         }
     }
 }
 @Composable
-fun AdaptiveTitleText(text: String) {
+fun AdaptiveTitleText(
+    text: String,
+    minFontSize: androidx.compose.ui.unit.TextUnit = 12.sp
+) {
     val baseFontSize = MaterialTheme.typography.titleSmall.fontSize
     var fontSize by remember { mutableStateOf(baseFontSize) }
     var readyToDraw by remember { mutableStateOf(false) }
@@ -212,7 +210,11 @@ fun AdaptiveTitleText(text: String) {
         softWrap = false,
         onTextLayout = { result ->
             if (!readyToDraw && result.hasVisualOverflow) {
-                fontSize *= 0.9
+                if (fontSize > minFontSize) {
+                    fontSize *= 0.9f
+                } else {
+                    readyToDraw = true
+                }
             } else {
                 readyToDraw = true
             }
@@ -222,49 +224,19 @@ fun AdaptiveTitleText(text: String) {
 }
 
 
-fun getSamplePlaces(): List<Place> {
-    return listOf(
-        Place(
-            id = 1,
-            title = "Эрмитаж",
-            category = "Музей",
-            address= "адрес",
-            description= "описание"
-        ),
-        Place(
-            id = 2,
-            title = "Петропавловская крепость",
-            category = "История",
-            address= "адрес",
-            description= "описание"
-        ),
-        Place(
-            id = 3,
-            title = "Исаакиевский собор",
-            category = "Архитектура",
-            address= "адрес",
-            description= "описание"
-        )
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewAddToRouteScreen() {
+    val samplePlaces = listOf(
+        Place("1", "Эрмитаж", "адрес", "Музей", "описание", "",""),
+        Place("2", "Петропавловская крепость", "адрес", "История", "описание", "",""),
+        Place("3", "Исаакиевский собор", "адрес", "Архитектура", "описание", "","")
+    )
     MaterialTheme {
         AddToRouteScreen(
+            places = samplePlaces,
             onBackClick = {},
             onSaveTrip = {},
-            onPlaceClick = {}
-        )
-    }
-}
-
-@Composable
-fun PreviewPlaceCard() {
-    MaterialTheme {
-        PlaceCard(
-            place = Place(1, "Тестовое место", "adres","category","description"),
             onPlaceClick = {}
         )
     }
