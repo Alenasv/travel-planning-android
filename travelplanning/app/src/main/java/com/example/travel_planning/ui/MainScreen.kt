@@ -27,15 +27,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.example.travel_planning.db.entities.TripEntity
+import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 
 data class ListItem(
@@ -49,28 +59,55 @@ data class GalleryItem(
     val color: Color,
     val title: String
 )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onAddTripClick: () -> Unit
+    onAddTripClick: () -> Unit,
+    repository: TripRepository? = null,
+    tripsOverride: List<TripEntity>? = null
 ) {
-    val listItems = remember {
-        mutableStateOf(
-            listOf(
-                ListItem(
-                    id = 1,
-                    title = "title",
-                    description = "description"
-                ),
-                ListItem(
-                    id = 2,
-                    title = "title",
-                    description = "description"
-                ),
-            )
-        )
+    var trips by remember { mutableStateOf(listOf<TripEntity>()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var shouldRefresh by remember { mutableStateOf(false) }
+
+    val loadTrips: suspend () -> Unit = {
+        try {
+            repository?.let {
+                trips = it.getAllTrips()
+            }
+        } catch (e: Exception) {
+            trips = emptyList()
+        } finally {
+            isLoading = false
+        }
     }
+
+    LaunchedEffect(Unit) {
+        loadTrips()
+    }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            loadTrips()
+            shouldRefresh = false
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                shouldRefresh = true
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
 
     val galleryItems = remember {
         listOf(
@@ -82,6 +119,7 @@ fun MainScreen(
             GalleryItem(6, Color(0xFFBB8FCE), "Казанский собор")
         )
     }
+
 
     Scaffold(
         modifier = Modifier
@@ -127,6 +165,7 @@ fun MainScreen(
                     )
                 }
             }
+
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,19 +184,37 @@ fun MainScreen(
                 modifier = Modifier.padding(16.dp)
             )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(listItems.value) { item ->
-                    ListItemCard(item = item)
+            if (trips.isNotEmpty()) {
+                LazyColumn {
+                    items(trips) { trip ->
+                        ListItemCard(
+                            item = ListItem(
+                                id = trip.id_.toInt(),
+                                title = trip.name,
+                                description = trip.notes ?: ""
+                            )
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Пока нет поездок. Нажмите +, чтобы добавить.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun GalleryCard(item: GalleryItem) {
@@ -248,8 +305,15 @@ fun ListItemCard(item: ListItem) {
 @Composable
 fun MainScreenPreview() {
     TravelPlanningTheme {
+        val fakeTrips = listOf(
+            TripEntity(id_ = 1, name = "Поездка в Павловск", date = "2025-10-20", notes = "Прогулка по парку"),
+            TripEntity(id_ = 2, name = "Летний сад", date = "2025-10-21", notes = "Фото с цветами"),
+            TripEntity(id_ = 3, name = "Петропавловская крепость", date = null, notes = null)
+        )
+
         MainScreen(
-            onAddTripClick = {}
+            onAddTripClick = {},
+            tripsOverride = fakeTrips
         )
     }
 }

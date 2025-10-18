@@ -43,9 +43,16 @@ fun TripEditScreen(
     var notes by remember { mutableStateOf(trip?.notes ?: "") }
     val places = remember { mutableStateListOf<Place>() }
 
+    var shouldNavigateBack by remember { mutableStateOf(false) }
 
     if (isEditing && trip?.places?.isNotEmpty() == true && places.isEmpty()) {
         places.addAll(trip.places)
+    }
+
+    LaunchedEffect(shouldNavigateBack) {
+        if (shouldNavigateBack) {
+            onBackClick()
+        }
     }
 
     Scaffold(
@@ -85,7 +92,6 @@ fun TripEditScreen(
                                 notes = notes
                             )
                             onSaveTrip(updatedTrip)
-                            onBackClick()
                         },
                         enabled = title.isNotEmpty()
                     ) {
@@ -95,7 +101,7 @@ fun TripEditScreen(
                             tint = if (title.isNotEmpty()) {
                                 MaterialTheme.colorScheme.onPrimary
                             } else {
-                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                                MaterialTheme.colorScheme.onPrimary
                             }
                         )
                     }
