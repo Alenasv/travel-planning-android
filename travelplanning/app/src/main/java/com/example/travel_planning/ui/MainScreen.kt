@@ -1,5 +1,6 @@
 package com.example.travel_planning.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.example.travel_planning.EditTripActivity
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
@@ -64,7 +67,9 @@ data class GalleryItem(
 fun MainScreen(
     onAddTripClick: () -> Unit,
     repository: TripRepository? = null,
-    tripsOverride: List<TripEntity>? = null
+    tripsOverride: List<TripEntity>? = null,
+    onEditTripClick: (Long) -> Unit
+
 ) {
     var trips by remember { mutableStateOf(listOf<TripEntity>()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -108,7 +113,6 @@ fun MainScreen(
         }
     }
 
-
     val galleryItems = remember {
         listOf(
             GalleryItem(1, Color(0xFFFF6B6B), "Летний сад"),
@@ -120,13 +124,13 @@ fun MainScreen(
         )
     }
 
-
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding(),
         floatingActionButton = {
             FloatingActionButton(
+
                 onClick = onAddTripClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
@@ -166,49 +170,70 @@ fun MainScreen(
                 }
             }
 
-            LazyRow(
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(galleryItems) { item ->
-                    GalleryCard(item = item)
+
+                item {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(galleryItems) { item ->
+                            GalleryCard(item = item)
+                        }
+                    }
                 }
-            }
 
-            Text(
-                text = "Мои записи",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(16.dp)
-            )
+                item {
+                    Text(
+                        text = "Мои записи",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
-            if (trips.isNotEmpty()) {
-                LazyColumn {
-                    items(trips) { trip ->
+                if (trips.isNotEmpty()) {
+                    items(
+                        items = trips,
+                        key = { it.id_ }
+                    ) { trip ->
                         ListItemCard(
                             item = ListItem(
                                 id = trip.id_.toInt(),
                                 title = trip.name,
                                 description = trip.notes ?: ""
-                            )
+                            ),
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            edittrip = {
+                                onEditTripClick(trip.id_)
+                            }
+
                         )
                     }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Пока нет поездок. Нажмите +, чтобы добавить.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                } else {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Пока нет поездок. Нажмите +, чтобы добавить.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -249,13 +274,16 @@ fun GalleryCard(item: GalleryItem) {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListItemCard(item: ListItem) {
+fun ListItemCard(
+    item: ListItem,
+    modifier: Modifier = Modifier,
+    edittrip: () -> Unit
+) {
     Card(
-        onClick = { /* обработка клика по карточке */ },
-        modifier = Modifier.fillMaxWidth(),
+        onClick = edittrip,
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -276,19 +304,7 @@ fun ListItemCard(item: ListItem) {
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .padding(start = 48.dp, top = 4.dp)
                 )
-
-                IconButton(
-                    onClick = { /* Обработка нажатия на меню */ }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Меню",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
             }
             Text(
                 text = item.description,
@@ -296,7 +312,7 @@ fun ListItemCard(item: ListItem) {
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 20.dp, top = 4.dp)
+                    .padding(top = 4.dp)
             )
         }
     }
@@ -313,7 +329,8 @@ fun MainScreenPreview() {
 
         MainScreen(
             onAddTripClick = {},
-            tripsOverride = fakeTrips
+            tripsOverride = fakeTrips,
+            onEditTripClick = {}
         )
     }
 }

@@ -2,7 +2,6 @@ package com.example.travel_planning
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +33,11 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         onAddTripClick = {
                             startActivity(Intent(this, AddTripActivity::class.java))
+                        },
+                        onEditTripClick = { tripId ->
+                            val intent = Intent(this, EditTripActivity::class.java)
+                            intent.putExtra("TRIP_ID", tripId)
+                            startActivity(intent)
                         },
                         repository = repository
                     )

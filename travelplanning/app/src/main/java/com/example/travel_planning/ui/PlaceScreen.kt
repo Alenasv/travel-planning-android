@@ -43,9 +43,11 @@ data class Trip(
 fun AddToRouteScreen(
     places: List<Place>,
     onBackClick: () -> Unit,
-    onSaveTrip: (Trip) -> Unit,
+    onSaveTrip: (List<Place>) -> Unit,
     onPlaceClick: (Place) -> Unit
 ) {
+    var selectedPlaces by remember { mutableStateOf(setOf<String>()) }
+
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
         topBar = {
@@ -75,7 +77,8 @@ fun AddToRouteScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            onSaveTrip(Trip())
+                            val selected = places.filter { it.id in selectedPlaces }
+                            onSaveTrip(selected)
                         },
                     ) {
                         Icon(
@@ -117,9 +120,16 @@ fun AddToRouteScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(places) { place ->
-                    PlaceCard(place = place, onPlaceClick = { onPlaceClick(place) })
+                    PlaceCard(
+                        place = place,
+                        initiallySelected = selectedPlaces.contains(place.id),
+                        onToggleSelect = { isSelected ->
+                            selectedPlaces = if (isSelected) selectedPlaces + place.id else selectedPlaces - place.id
+                        },
+                        onPlaceClick = { onPlaceClick(place) }
+                    )
                 }
-            }
+                }
         }
     }
 }
@@ -127,8 +137,11 @@ fun AddToRouteScreen(
 @Composable
 fun PlaceCard(
     place: Place,
+    initiallySelected: Boolean = false,
+    onToggleSelect: (Boolean) -> Unit,
     onPlaceClick: () -> Unit
 ) {
+    var isSelected by remember { mutableStateOf(initiallySelected) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,44 +167,49 @@ fun PlaceCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.35f)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
                 verticalArrangement = Arrangement.SpaceBetween
-            ) { Column {
-                AdaptiveTitleText(place.name)
-                Text(
-                    text = place.category,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
+            ) {
+                Column {
+                    AdaptiveTitleText(place.name)
+                    Text(
+                        text = place.category,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+
                 OutlinedButton(
-                    onClick = { /* добавить место в определенный день */ },
+                    onClick = {
+                        isSelected = !isSelected
+                        onToggleSelect(isSelected)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 0.9.dp)
-                        .height(36.dp)
-                        .align(Alignment.CenterHorizontally),
-                    colors = ButtonDefaults.outlinedButtonColors(
+                        .height(36.dp),
+                    colors = if (isSelected) ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ) else ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "Добавить",
+                        text = if (isSelected) "Убрать" else "Добавить",
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
-
-
-
             }
         }
     }
 }
+
 @Composable
 fun AdaptiveTitleText(
     text: String,
@@ -228,15 +246,16 @@ fun AdaptiveTitleText(
 @Composable
 fun PreviewAddToRouteScreen() {
     val samplePlaces = listOf(
-        Place("1", "Эрмитаж", "адрес", "Музей", "описание", "",""),
-        Place("2", "Петропавловская крепость", "адрес", "История", "описание", "",""),
-        Place("3", "Исаакиевский собор", "адрес", "Архитектура", "описание", "","")
+        Place("1", "Эрмитаж", "адрес", "Музей", "описание", "", ""),
+        Place("2", "Петропавловская крепость", "адрес", "История", "описание", "", ""),
+        Place("3", "Исаакиевский собор", "адрес", "Архитектура", "описание", "", "")
     )
     MaterialTheme {
         AddToRouteScreen(
             places = samplePlaces,
             onBackClick = {},
-            onSaveTrip = {},
+            onSaveTrip = { selectedPlaces: List<Place> ->
+            },
             onPlaceClick = {}
         )
     }

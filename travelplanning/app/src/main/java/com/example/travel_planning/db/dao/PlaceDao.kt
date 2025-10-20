@@ -14,4 +14,7 @@ interface PlaceDao {
 
     @Query("SELECT * FROM place")
     suspend fun getAll(): List<PlaceEntity>
+
+    @Delete
+    suspend fun delete(place: PlaceEntity)
 }

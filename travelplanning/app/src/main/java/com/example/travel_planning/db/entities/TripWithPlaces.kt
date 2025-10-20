@@ -10,7 +10,7 @@ data class TripWithPlaces(
         parentColumn = "id_",
         entityColumn = "id_",
         associateBy = Junction(
-            TripPlaceCrossRef::class,
+            value = TripPlaceCrossRef::class,
             parentColumn = "tripId",
             entityColumn = "placeId"
         )

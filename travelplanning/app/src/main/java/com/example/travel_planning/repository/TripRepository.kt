@@ -17,26 +17,47 @@ class TripRepository(private val db: AppDatabase) {
         return tripDao.getAllTrips()
     }
 
-    suspend fun updateTrip(trip: TripEntity) {
-        tripDao.insertTrip(trip)
+    suspend fun updateTrip(tripId: Long, name: String, date: String, notes: String): Boolean {
+        return try {
+            val trip = TripEntity(
+                id_ = tripId,
+                name = name,
+                date = date,
+                notes = notes
+            )
+            tripDao.updateTrip(trip)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     suspend fun deleteTrip(trip: TripEntity) {
-        // tripDao.deleteTrip(trip)
+        tripDao.deleteTrip(trip)
     }
 
     suspend fun getTripWithPlaces(tripId: Long) = tripDao.getTripWithPlaces(tripId)
 
     suspend fun addPlaceToTrip(tripId: Long, place: PlaceEntity) {
         val existingPlace = placeDao.getByPlaceId(place.place_id)
-        val placeEntity = existingPlace ?: place.also { placeDao.insert(it) }
+        val placeEntity = if (existingPlace != null) {
+            existingPlace
+        } else {
+            val newId = placeDao.insert(place)
+            place.copy(id_ = newId)
+        }
 
         tripDao.insertCrossRef(
             TripPlaceCrossRef(tripId = tripId, placeId = placeEntity.id_)
         )
     }
 
-    suspend fun removePlaceFromTrip(tripId: Long, placeId: Long) {
-        tripDao.deleteCrossRef(tripId, placeId)
+    suspend fun removePlaceFromTrip(tripId: Long, placeIdString: String) {
+        val place = placeDao.getByPlaceId(placeIdString)
+        place?.let { placeEntity ->
+            tripDao.deleteCrossRef(tripId,  placeEntity.id_)
+                placeDao.delete(placeEntity)
+            }
+        }
     }
-}

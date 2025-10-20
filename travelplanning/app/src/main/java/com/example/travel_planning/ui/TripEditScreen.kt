@@ -1,9 +1,15 @@
 package com.example.travel_planning.ui
 
 import Place
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -11,13 +17,19 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.travel_planning.repository.TripRepository
 
 
 data class Trip(
@@ -27,31 +39,50 @@ data class Trip(
     val places: List<Place> = emptyList(),
     val notes: String = ""
 )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripEditScreen(
-    onAddPlaceClick: () -> Unit,
     trip: Trip? = null,
+    tripId: Long? = null,
+    repository: TripRepository?=null,
     onBackClick: () -> Unit,
-    onSaveTrip: (Trip) -> Unit
+    onSaveTrip: (Trip) -> Unit,
+    onAddPlaceClick: (Trip) -> Unit,
+    onRemovePlaceClick: (Long, String) -> Unit
+
 ) {
     val isEditing = trip != null
-
+    val places = remember(trip) {
+        mutableStateListOf<Place>().apply {
+            if (trip?.places?.isNotEmpty() == true) {
+                addAll(trip.places)
+            }
+        }
+    }
     var title by remember { mutableStateOf(trip?.title ?: "") }
     var date by remember { mutableStateOf(trip?.date ?: "") }
     var notes by remember { mutableStateOf(trip?.notes ?: "") }
-    val places = remember { mutableStateListOf<Place>() }
 
-    var shouldNavigateBack by remember { mutableStateOf(false) }
+    var isTitleError by remember { mutableStateOf(false) }
+    var isTouched by remember { mutableStateOf(false) }
+    var showSaveError by remember { mutableStateOf(false) }
 
-    if (isEditing && trip?.places?.isNotEmpty() == true && places.isEmpty()) {
-        places.addAll(trip.places)
-    }
+    val saveTrip = {
+        isTouched = true
+        isTitleError = title.isEmpty()
 
-    LaunchedEffect(shouldNavigateBack) {
-        if (shouldNavigateBack) {
-            onBackClick()
+        if (title.isNotEmpty()) {
+            val updatedTrip = Trip(
+                id = trip?.id ?: 0,
+                title = title,
+                date = date,
+                places = places,
+                notes = notes
+            )
+            onSaveTrip(updatedTrip)
+            showSaveError = false
+        } else {
+            showSaveError = true
         }
     }
 
@@ -67,9 +98,9 @@ fun TripEditScreen(
                 ),
                 title = {
                     Text(
-                        "Новая поездка",
+                        if (isEditing) "Редактирование" else "Новая поездка",
                         color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
@@ -83,7 +114,65 @@ fun TripEditScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = {
+                        onClick = saveTrip,
+                        enabled = title.isNotEmpty()
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Сохранить",
+                                tint = if (title.isNotEmpty()) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                                }
+                            )
+                            if (showSaveError) {
+                                Text(
+                                    text = "✗",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.offset(y = (-4).dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (title.isEmpty() && isTouched) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Информация",
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Сначала введите название",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
+
+                FloatingActionButton(
+                    onClick = {
+                        if (title.isNotEmpty()) {
                             val updatedTrip = Trip(
                                 id = trip?.id ?: 0,
                                 title = title,
@@ -91,36 +180,32 @@ fun TripEditScreen(
                                 places = places,
                                 notes = notes
                             )
-                            onSaveTrip(updatedTrip)
-                        },
-                        enabled = title.isNotEmpty()
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "Сохранить",
-                            tint = if (title.isNotEmpty()) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onPrimary
-                            }
-                        )
+                            onAddPlaceClick(updatedTrip)
+                        } else {
+                            isTouched = true
+                            isTitleError = true
+                            showSaveError = true
+                        }
+                    },
+                    containerColor = if (title.isNotEmpty()) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    contentColor = if (title.isNotEmpty()) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     }
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Добавить место",
+                    )
                 }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddPlaceClick,
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Добавить место",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
             }
         }
-    ) {innerPadding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -129,17 +214,97 @@ fun TripEditScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text(
-                text = "Название поездки",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Название поездки",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                AnimatedVisibility(
+                    visible = isTitleError && isTouched,
+                    enter = scaleIn() + fadeIn(),
+                    exit = scaleOut() + fadeOut()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Ошибка",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Обязательно",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Text(
+                    text = "*",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
             OutlinedTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    if (isTouched) {
+                        isTitleError = it.isEmpty()
+                        showSaveError = it.isEmpty()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Введите название поездки") }
+                placeholder = {
+                    Text(
+                        "Введите название поездки",
+                        color = if (isTitleError && isTouched) {
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        }
+                    )
+                },
+                isError = isTitleError && isTouched,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = if (isTitleError && isTouched) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                    unfocusedContainerColor = if (isTitleError && isTouched) {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                ),
+                supportingText = {
+                    if (isTitleError && isTouched) {
+                        Text(
+                            text = "Введите название поездки для сохранения",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        Text(
+                            text = "Название будет отображаться в списке поездок",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                singleLine = true,
+                shape = if (isTitleError && isTouched) {
+                    RoundedCornerShape(12.dp)
+                } else {
+                    RoundedCornerShape(8.dp)
+                }
             )
 
             Divider(
@@ -147,22 +312,33 @@ fun TripEditScreen(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
 
-            Text(
-                text = "Места для посещения",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Места для посещения",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+            }
 
             if (places.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    places.forEach { place ->
+                    places.forEachIndexed { index, place ->
                         PlaceListItem(
                             place = place,
                             onRemoveClick = {
-                                places.remove(place)
+                                if (index < places.size) {
+                                    val removedPlace = places.removeAt(index)
+                                    tripId?.let { id ->
+                                        onRemovePlaceClick(id, removedPlace.id)
+                                    }
+                                }
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -175,11 +351,29 @@ fun TripEditScreen(
                         .height(100.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Нажмите + чтобы добавить места",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = "Места",
+                            tint = if (title.isNotEmpty()) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text =   "Нажмите + чтобы добавить места",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (title.isNotEmpty()) {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            },
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 
@@ -242,9 +436,14 @@ fun PlaceListItem(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = place.description,
+                    text = place.category,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = place.work_time,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -305,7 +504,8 @@ fun TripEditScreenPreview() {
         TripEditScreen(
             onBackClick = {},
             onSaveTrip = {},
-            onAddPlaceClick = {}
+            onAddPlaceClick = {},
+            onRemovePlaceClick = { tripId, placeId -> }
         )
     }
 }

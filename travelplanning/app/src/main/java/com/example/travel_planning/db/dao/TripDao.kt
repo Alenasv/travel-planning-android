@@ -8,6 +8,9 @@ interface TripDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTrip(trip: TripEntity): Long
 
+    @Update
+    suspend fun updateTrip(trip: TripEntity)
+
     @Query("SELECT * FROM trip")
     suspend fun getAllTrips(): List<TripEntity>
 
