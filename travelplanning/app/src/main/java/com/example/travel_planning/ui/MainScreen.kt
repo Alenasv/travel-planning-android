@@ -1,7 +1,9 @@
 package com.example.travel_planning.ui
 
 import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,10 +48,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.EditTripActivity
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import kotlinx.coroutines.launch
 
 data class ListItem(
     val id: Int,
@@ -70,8 +74,8 @@ fun MainScreen(
     tripsOverride: List<TripEntity>? = null,
     onEditTripClick: (Long) -> Unit
 
-) {
-    var trips by remember { mutableStateOf(listOf<TripEntity>()) }
+) {    val lifecycleOwner = LocalLifecycleOwner.current
+    var trips by remember { mutableStateOf(tripsOverride ?: listOf()) }
     var isLoading by remember { mutableStateOf(true) }
     var shouldRefresh by remember { mutableStateOf(false) }
 
@@ -88,21 +92,23 @@ fun MainScreen(
     }
 
     LaunchedEffect(Unit) {
-        loadTrips()
-    }
-
-    LaunchedEffect(shouldRefresh) {
-        if (shouldRefresh) {
+        if (tripsOverride == null) {
             loadTrips()
-            shouldRefresh = false
         }
     }
-
-    val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                shouldRefresh = true
+                lifecycleOwner.lifecycleScope.launch {
+                    isLoading = true
+                    try {
+                        repository?.let { trips = it.getAllTrips() }
+                    } catch (e: Exception) {
+                        trips = emptyList()
+                    } finally {
+                        isLoading = false
+                    }
+                }
             }
         }
 
@@ -213,7 +219,8 @@ fun MainScreen(
                             modifier = Modifier.padding(horizontal = 16.dp),
                             edittrip = {
                                 onEditTripClick(trip.id_)
-                            }
+                            },
+
 
                         )
                     }
@@ -274,16 +281,19 @@ fun GalleryCard(item: GalleryItem) {
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ListItemCard(
     item: ListItem,
     modifier: Modifier = Modifier,
     edittrip: () -> Unit
+
 ) {
-    Card(
-        onClick = edittrip,
-        modifier = modifier.fillMaxWidth(),
+    Card(Modifier
+        .combinedClickable(
+            onClick = edittrip,
+            onLongClick = { },
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -317,6 +327,7 @@ fun ListItemCard(
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {

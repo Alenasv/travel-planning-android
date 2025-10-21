@@ -51,17 +51,15 @@ fun TripEditScreen(
     onRemovePlaceClick: (Long, String) -> Unit
 
 ) {
+    val currentTrip = trip ?: Trip()
     val isEditing = trip != null
-    val places = remember(trip) {
-        mutableStateListOf<Place>().apply {
-            if (trip?.places?.isNotEmpty() == true) {
-                addAll(trip.places)
-            }
-        }
+    val places = remember(currentTrip.places) {
+        mutableStateListOf<Place>().apply { addAll(currentTrip.places) }
     }
-    var title by remember { mutableStateOf(trip?.title ?: "") }
-    var date by remember { mutableStateOf(trip?.date ?: "") }
-    var notes by remember { mutableStateOf(trip?.notes ?: "") }
+
+    var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
+    var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date) }
+    var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
 
     var isTitleError by remember { mutableStateOf(false) }
     var isTouched by remember { mutableStateOf(false) }

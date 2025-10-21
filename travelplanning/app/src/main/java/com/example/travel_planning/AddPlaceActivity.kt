@@ -16,7 +16,10 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AddPlaceActivity : ComponentActivity() {
     private lateinit var repository: TripRepository
@@ -56,14 +59,20 @@ class AddPlaceActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 val currentPlaces = repository.getTripWithPlaces(tripId)?.places?.map { it.place_id }?.toSet() ?: emptySet()
 
-                                selectedPlaces.filter { it.id !in currentPlaces }
-                                    .forEach { repository.addPlaceToTrip(tripId, it.toEntity()) }
-                                currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
-                                    .forEach { repository.removePlaceFromTrip(tripId, it) }
+                                withContext(Dispatchers.IO) {
+                                    selectedPlaces.filter { it.id !in currentPlaces }
+                                        .forEach { repository.addPlaceToTrip(tripId, it.toEntity()) }
 
-                                val intentEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
-                                intentEditTripActivity.putExtra("TRIP_ID", tripId)
-                                startActivity(intentEditTripActivity)
+                                    currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
+                                        .forEach { repository.removePlaceFromTrip(tripId, it) }
+                                }
+                                delay(150)
+                                withContext(Dispatchers.Main) {
+                                    val intent = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+                                    intent.putExtra("TRIP_ID", tripId)
+                                    startActivity(intent)
+                                    finish()
+                                }
                             }
                         }
                     )
