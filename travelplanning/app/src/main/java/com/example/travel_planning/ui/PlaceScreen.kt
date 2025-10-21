@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.travel_planning.ui.Trip
 
 
 data class Place(
@@ -33,21 +34,22 @@ data class Place(
     val image_filename: String
 )
 
-data class Trip(
-    val id: Int = 0,
-    val name: String = ""
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
+    tripId: Long,
+    selectedPlacesIds: Set<String>,
     places: List<Place>,
     onBackClick: () -> Unit,
     onSaveTrip: (List<Place>) -> Unit,
     onPlaceClick: (Place) -> Unit
 ) {
-    var selectedPlaces by remember { mutableStateOf(setOf<String>()) }
+    val selectedPlaces = remember { mutableStateListOf<Place>() }
 
+    LaunchedEffect(selectedPlacesIds) {
+        selectedPlaces.clear()
+        selectedPlaces.addAll(places.filter { it.id in selectedPlacesIds })
+    }
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
         topBar = {
@@ -77,7 +79,7 @@ fun AddToRouteScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val selected = places.filter { it.id in selectedPlaces }
+                            val selected = places.filter { place -> selectedPlaces.any { it.id == place.id } }
                             onSaveTrip(selected)
                         },
                     ) {
@@ -120,11 +122,18 @@ fun AddToRouteScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(places) { place ->
+                    val isSelected = selectedPlaces.any { it.id == place.id }
                     PlaceCard(
                         place = place,
-                        initiallySelected = selectedPlaces.contains(place.id),
-                        onToggleSelect = { isSelected ->
-                            selectedPlaces = if (isSelected) selectedPlaces + place.id else selectedPlaces - place.id
+                        initiallySelected = isSelected,
+                        onToggleSelect = { toggled ->
+                            if (toggled) {
+                                if (selectedPlaces.none { it.id == place.id }) {
+                                    selectedPlaces.add(place)
+                                }
+                            } else {
+                                selectedPlaces.removeAll { it.id == place.id }
+                            }
                         },
                         onPlaceClick = { onPlaceClick(place) }
                     )
@@ -142,6 +151,9 @@ fun PlaceCard(
     onPlaceClick: () -> Unit
 ) {
     var isSelected by remember { mutableStateOf(initiallySelected) }
+    LaunchedEffect(initiallySelected) {
+        isSelected = initiallySelected
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -256,7 +268,9 @@ fun PreviewAddToRouteScreen() {
             onBackClick = {},
             onSaveTrip = { selectedPlaces: List<Place> ->
             },
-            onPlaceClick = {}
+            onPlaceClick = {},
+            tripId = 1L,
+            selectedPlacesIds = setOf("1", "3"),
         )
     }
 }

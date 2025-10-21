@@ -48,6 +48,8 @@ class AddPlaceActivity : ComponentActivity() {
                     }
 
                     AddToRouteScreen(
+                        tripId = tripId,
+                        selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = { finish() },
                         onPlaceClick = { place ->
@@ -66,7 +68,6 @@ class AddPlaceActivity : ComponentActivity() {
                                     currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
                                         .forEach { repository.removePlaceFromTrip(tripId, it) }
                                 }
-                                delay(150)
                                 withContext(Dispatchers.Main) {
                                     val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
                                     intentToEditTripActivity.putExtra("TRIP_ID", tripId)
