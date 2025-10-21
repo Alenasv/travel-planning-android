@@ -1,7 +1,9 @@
 package com.example.travel_planning.repository
 
+import Place
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.db.entities.*
+import com.example.travel_planning.ui.Trip
 
 class TripRepository(private val db: AppDatabase) {
 
@@ -61,3 +63,24 @@ class TripRepository(private val db: AppDatabase) {
             }
         }
     }
+suspend fun TripRepository.getTripForUI(tripId: Long): Trip? {
+    return getTripWithPlaces(tripId)?.let { tripWithPlaces ->
+        Trip(
+            id = tripWithPlaces.trip.id_.toInt(),
+            title = tripWithPlaces.trip.name,
+            date = tripWithPlaces.trip.date ?: "",
+            notes = tripWithPlaces.trip.notes ?: "",
+            places = tripWithPlaces.places.map { placeEntity ->
+                Place(
+                    id = placeEntity.place_id,
+                    name = placeEntity.name,
+                    address = placeEntity.address,
+                    work_time = placeEntity.work_time ?: "",
+                    category = placeEntity.category,
+                    description = placeEntity.description ?: "",
+                    image_filename = placeEntity.imageFilename ?: ""
+                )
+            }
+        )
+    }
+}

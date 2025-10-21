@@ -2,8 +2,6 @@ package com.example.travel_planning
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Surface
@@ -12,12 +10,15 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AddTripActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
     private var createdTripId: Long? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -34,53 +35,16 @@ class AddTripActivity : ComponentActivity() {
                         onBackClick = { finish() },
                         onSaveTrip = { newTrip ->
                             lifecycleScope.launch {
-
-                                val result = repository.createTrip(
-                                    name = newTrip.title,
-                                    date = newTrip.date,
-                                    notes = newTrip.notes
-                                )
-
-                                if (result > 0) {
-                                    runOnUiThread {
-                                        finish()
-                                    }
-                                } else {
-                                    runOnUiThread {
-                                        Toast.makeText(
-                                            this@AddTripActivity,
-                                            "Ошибка сохранения Result: $result",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
+                                saveTrip(newTrip.title, newTrip.date, newTrip.notes)
+                                val intentToMainActivity = Intent(this@AddTripActivity, MainActivity::class.java)
+                                startActivity(intentToMainActivity)
+                                finish()
                             }
                         },
                         onAddPlaceClick = { newTrip ->
                             lifecycleScope.launch {
-                                val tripId = createdTripId ?: repository.createTrip(
-                                    name = newTrip.title,
-                                    date = newTrip.date,
-                                    notes = newTrip.notes
-                                )
-
-                                if (tripId > 0) {
-                                    createdTripId = tripId
-                                    runOnUiThread {
-                                        val intent = Intent(this@AddTripActivity, AddPlaceActivity::class.java)
-                                        intent.putExtra("TRIP_ID", tripId)
-                                        startActivity(intent)
-                                    }
-                                } else {
-                                    runOnUiThread {
-                                        Toast.makeText(
-                                            this@AddTripActivity,
-                                            "Ошибка при создании поездки перед добавлением мест",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                }
-
+                                val tripId = createdTripId ?: saveTrip(newTrip.title, newTrip.date, newTrip.notes)
+                                navigateToAddPlace(tripId)
                             }
                         },
                         onRemovePlaceClick = { currentTripId, placeId ->
@@ -92,5 +56,19 @@ class AddTripActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private suspend fun saveTrip(name: String, date: String, notes: String): Long {
+        return withContext(Dispatchers.IO) {
+            val tripId = repository.createTrip(name, date, notes)
+            createdTripId = tripId
+            tripId
+        }
+    }
+
+    private fun navigateToAddPlace(tripId: Long) {
+        val intentToAddPlaceActivity = Intent(this, AddPlaceActivity::class.java)
+        intentToAddPlaceActivity.putExtra("TRIP_ID", tripId)
+        startActivity(intentToAddPlaceActivity)
     }
 }

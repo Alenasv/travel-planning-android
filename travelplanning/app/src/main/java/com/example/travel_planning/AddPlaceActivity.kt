@@ -51,9 +51,9 @@ class AddPlaceActivity : ComponentActivity() {
                         places = allPlaces,
                         onBackClick = { finish() },
                         onPlaceClick = { place ->
-                            val intent = Intent(this, PlaceDetailActivity::class.java)
-                            intent.putExtra("PLACE_ID", place.id)
-                            startActivity(intent)
+                            val intentToPlaceDetailActivity = Intent(this, PlaceDetailActivity::class.java)
+                            intentToPlaceDetailActivity.putExtra("PLACE_ID", place.id)
+                            startActivity(intentToPlaceDetailActivity)
                         },
                         onSaveTrip = { selectedPlaces ->
                             lifecycleScope.launch {
@@ -68,9 +68,9 @@ class AddPlaceActivity : ComponentActivity() {
                                 }
                                 delay(150)
                                 withContext(Dispatchers.Main) {
-                                    val intent = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
-                                    intent.putExtra("TRIP_ID", tripId)
-                                    startActivity(intent)
+                                    val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+                                    intentToEditTripActivity.putExtra("TRIP_ID", tripId)
+                                    startActivity(intentToEditTripActivity)
                                     finish()
                                 }
                             }
