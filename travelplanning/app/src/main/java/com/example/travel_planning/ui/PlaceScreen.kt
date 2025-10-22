@@ -42,23 +42,16 @@ fun AddToRouteScreen(
     places: List<Place>,
     onBackClick: () -> Unit,
     onSaveTrip: (List<Place>) -> Unit,
-    onPlaceClick: (Place) -> Unit
+    onPlaceClick: (Place) -> Unit,
+    onTogglePlace: (String, Boolean) -> Unit
 ) {
-    val selectedPlaces = remember { mutableStateListOf<Place>() }
-
-    LaunchedEffect(selectedPlacesIds) {
-        selectedPlaces.clear()
-        selectedPlaces.addAll(places.filter { it.id in selectedPlacesIds })
-    }
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 title = {
                     Text(
@@ -79,9 +72,9 @@ fun AddToRouteScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val selected = places.filter { place -> selectedPlaces.any { it.id == place.id } }
+                            val selected = places.filter { it.id in selectedPlacesIds }
                             onSaveTrip(selected)
-                        },
+                        }
                     ) {
                         Icon(
                             Icons.Default.Check,
@@ -93,52 +86,24 @@ fun AddToRouteScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Рекомендуемые места",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            items(places) { place ->
+                val isSelected = place.id in selectedPlacesIds
+                PlaceCard(
+                    place = place,
+                    isSelected = isSelected,
+                    onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
+                    onPlaceClick = { onPlaceClick(place) }
                 )
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(places) { place ->
-                    val isSelected = selectedPlaces.any { it.id == place.id }
-                    PlaceCard(
-                        place = place,
-                        initiallySelected = isSelected,
-                        onToggleSelect = { toggled ->
-                            if (toggled) {
-                                if (selectedPlaces.none { it.id == place.id }) {
-                                    selectedPlaces.add(place)
-                                }
-                            } else {
-                                selectedPlaces.removeAll { it.id == place.id }
-                            }
-                        },
-                        onPlaceClick = { onPlaceClick(place) }
-                    )
-                }
-                }
         }
     }
 }
@@ -146,14 +111,10 @@ fun AddToRouteScreen(
 @Composable
 fun PlaceCard(
     place: Place,
-    initiallySelected: Boolean = false,
+    isSelected: Boolean,
     onToggleSelect: (Boolean) -> Unit,
     onPlaceClick: () -> Unit
 ) {
-    var isSelected by remember { mutableStateOf(initiallySelected) }
-    LaunchedEffect(initiallySelected) {
-        isSelected = initiallySelected
-    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,10 +158,7 @@ fun PlaceCard(
                 }
 
                 OutlinedButton(
-                    onClick = {
-                        isSelected = !isSelected
-                        onToggleSelect(isSelected)
-                    },
+                    onClick = { onToggleSelect(!isSelected) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 0.9.dp)
@@ -221,6 +179,7 @@ fun PlaceCard(
         }
     }
 }
+
 
 @Composable
 fun AdaptiveTitleText(
@@ -262,6 +221,7 @@ fun PreviewAddToRouteScreen() {
         Place("2", "Петропавловская крепость", "адрес", "История", "описание", "", ""),
         Place("3", "Исаакиевский собор", "адрес", "Архитектура", "описание", "", "")
     )
+    var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
     MaterialTheme {
         AddToRouteScreen(
             places = samplePlaces,
@@ -271,6 +231,9 @@ fun PreviewAddToRouteScreen() {
             onPlaceClick = {},
             tripId = 1L,
             selectedPlacesIds = setOf("1", "3"),
+            onTogglePlace = { placeId, toggled ->
+                selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId
+            },
         )
     }
 }
