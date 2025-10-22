@@ -17,7 +17,6 @@ import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,10 +50,13 @@ class AddPlaceActivity : ComponentActivity() {
                         tripId = tripId,
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
-                        onBackClick = { finish() },
+                        onBackClick = {
+
+                            finish() },
                         onPlaceClick = { place ->
                             val intentToPlaceDetailActivity = Intent(this, PlaceDetailActivity::class.java)
                             intentToPlaceDetailActivity.putExtra("PLACE_ID", place.id)
+                            intentToPlaceDetailActivity.putExtra("TRIP_ID", tripId)
                             startActivity(intentToPlaceDetailActivity)
                         },
                         onSaveTrip = { selectedPlaces ->
