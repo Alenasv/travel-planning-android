@@ -22,17 +22,24 @@ class PlaceDetailActivity : ComponentActivity() {
         val places: List<Place> = loadJsonListFromAssets(this, "all_places.json")
         val currentPlace = places.find { it.id == placeId }
 
+        val isSelected = intent.getBooleanExtra("IS_SELECTED", false)
+
         setContent {
             TravelPlanningTheme {
                 Surface {
                     PlaceDetailScreen(
                         place = currentPlace,
+                        isSelected = isSelected,
                         onBackClick = { finish() },
                         onAddToRoute = {
-                            val resultIntent = Intent().apply { putExtra("ADDED_PLACE_ID", placeId) }
+                            val resultIntent = Intent().apply {
+                                putExtra("PLACE_ID", placeId)
+                                putExtra("IS_SELECTED", !isSelected)
+                            }
                             setResult(RESULT_OK, resultIntent)
                             finish()
                         }
+
 
                     )
                 }

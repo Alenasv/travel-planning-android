@@ -81,6 +81,14 @@ class EditTripActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 repository.removePlaceFromTrip(currentTripId, placeId)
                             }
+                        },
+                        onPlaceClick = { place ->
+                            val isSelected=true
+                            val intent = Intent(this, PlaceDetailActivity::class.java)
+                            intent.putExtra("PLACE_ID", place.id)
+                            intent.putExtra("TRIP_ID", tripId)
+                            intent.putExtra("IS_SELECTED", isSelected)
+                            startActivity(intent)
                         }
                     )
                 }

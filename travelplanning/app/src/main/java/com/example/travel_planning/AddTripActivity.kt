@@ -51,6 +51,8 @@ class AddTripActivity : ComponentActivity() {
                             lifecycleScope.launch {
                                 repository.removePlaceFromTrip(currentTripId, placeId)
                             }
+                        },
+                        onPlaceClick = { place ->
                         }
                     )
                 }

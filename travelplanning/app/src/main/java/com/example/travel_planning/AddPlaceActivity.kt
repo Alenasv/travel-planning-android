@@ -49,12 +49,17 @@ class AddPlaceActivity : ComponentActivity() {
                         ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         if (result.resultCode == RESULT_OK) {
-                            val addedPlaceId = result.data?.getStringExtra("ADDED_PLACE_ID")
-                            if (addedPlaceId != null) {
-                                selectedPlacesIds.value += addedPlaceId
+                            val placeId = result.data?.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
+                            val newState = result.data?.getBooleanExtra("IS_SELECTED", false) ?: false
+
+                            selectedPlacesIds.value = if (newState) {
+                                selectedPlacesIds.value + placeId
+                            } else {
+                                selectedPlacesIds.value - placeId
                             }
                         }
                     }
+
 
 
                     AddToRouteScreen(
@@ -62,10 +67,11 @@ class AddPlaceActivity : ComponentActivity() {
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = { finish() },
-                        onPlaceClick = { place ->
+                        onPlaceClick = { place,isSelected ->
                             val intentToPlaceDetailActivity = Intent(this@AddPlaceActivity, PlaceDetailActivity::class.java)
                             intentToPlaceDetailActivity.putExtra("PLACE_ID", place.id)
                             intentToPlaceDetailActivity.putExtra("TRIP_ID", tripId)
+                            intentToPlaceDetailActivity.putExtra("IS_SELECTED", isSelected)
                             placeDetailLauncher.launch(intentToPlaceDetailActivity)
                         },
                         onTogglePlace = { placeId, toggled ->

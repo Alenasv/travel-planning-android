@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +49,8 @@ fun TripEditScreen(
     onBackClick: () -> Unit,
     onSaveTrip: (Trip) -> Unit,
     onAddPlaceClick: (Trip) -> Unit,
-    onRemovePlaceClick: (Long, String) -> Unit
+    onRemovePlaceClick: (Long, String) -> Unit,
+    onPlaceClick: (Place) -> Unit,
 
 ) {
     val currentTrip = trip ?: Trip()
@@ -338,6 +340,9 @@ fun TripEditScreen(
                                     }
                                 }
                             },
+                            onPlaceClick = { clickedPlace ->
+                                onPlaceClick(clickedPlace)
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -407,11 +412,14 @@ fun TripEditScreen(
 fun PlaceListItem(
     place: Place,
     onRemoveClick: () -> Unit,
+    onPlaceClick: (Place) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        onClick = { /* нажали на место */ },
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onPlaceClick(place) },
+
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -503,7 +511,8 @@ fun TripEditScreenPreview() {
             onBackClick = {},
             onSaveTrip = {},
             onAddPlaceClick = {},
-            onRemovePlaceClick = { tripId, placeId -> }
+            onRemovePlaceClick = { tripId, placeId -> },
+            onPlaceClick = {}
         )
     }
 }

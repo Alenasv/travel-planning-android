@@ -27,6 +27,7 @@ import coil.compose.rememberAsyncImagePainter
 fun PlaceDetailScreen(
     place: Place?,
     onBackClick: () -> Unit,
+    isSelected: Boolean,
     onAddToRoute: (Place) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -158,7 +159,10 @@ fun PlaceDetailScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
-                            Text("Добавить в маршрут", style = MaterialTheme.typography.titleMedium)
+                            Text(
+
+                                text = if (isSelected) "Убрать из маршрута" else "Добавить в маршрут",
+                                style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
@@ -193,7 +197,8 @@ fun PlaceDetailScreenPreview() {
         PlaceDetailScreen(
             place = place,
             onBackClick = { },
-            onAddToRoute = { }
+            onAddToRoute = { },
+            isSelected = true
         )
     }
 }
@@ -203,7 +208,8 @@ fun PlaceDetailScreenEmptyPreview() {
         PlaceDetailScreen(
             place = null,
             onBackClick = { },
-            onAddToRoute = { }
+            onAddToRoute = { },
+            isSelected = false
         )
     }
 }

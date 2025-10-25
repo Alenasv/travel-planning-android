@@ -1,4 +1,5 @@
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -9,10 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.layout.ContentScale
@@ -21,7 +25,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.travel_planning.ui.Trip
 
 
 data class Place(
@@ -42,7 +45,7 @@ fun AddToRouteScreen(
     places: List<Place>,
     onBackClick: () -> Unit,
     onSaveTrip: (List<Place>) -> Unit,
-    onPlaceClick: (Place) -> Unit,
+    onPlaceClick: (Place,Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit
 ) {
     Scaffold(
@@ -101,7 +104,7 @@ fun AddToRouteScreen(
                     place = place,
                     isSelected = isSelected,
                     onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
-                    onPlaceClick = { onPlaceClick(place) }
+                    onPlaceClick = { onPlaceClick(place,isSelected) }
                 )
             }
         }
@@ -139,6 +142,29 @@ fun PlaceCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+                if (isSelected) {
+                    IconButton(
+                        onClick = { onToggleSelect(false) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(15.dp)
+                            .size(22.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Убрать",
+                            tint = Color.White,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+                }
+
+
+
             }
 
             Column(
@@ -161,20 +187,33 @@ fun PlaceCard(
                     onClick = { onToggleSelect(!isSelected) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 0.9.dp)
                         .height(36.dp),
-                    colors = if (isSelected) ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ) else ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isSelected)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
+                        else
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        contentColor = if (isSelected)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isSelected)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                        else
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = if (isSelected) "Убрать" else "Добавить",
+                        text = if (isSelected) "Отменить" else "Добавить",
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
+
+
             }
         }
     }
@@ -228,7 +267,7 @@ fun PreviewAddToRouteScreen() {
             onBackClick = {},
             onSaveTrip = { selectedPlaces: List<Place> ->
             },
-            onPlaceClick = {},
+            onPlaceClick = {place, isSelected->},
             tripId = 1L,
             selectedPlacesIds = setOf("1", "3"),
             onTogglePlace = { placeId, toggled ->
