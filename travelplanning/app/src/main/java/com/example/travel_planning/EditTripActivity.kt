@@ -77,6 +77,7 @@ class EditTripActivity : ComponentActivity() {
                         tripId = tripId,
                         repository = repository,
                         onBackClick = {
+                            intentToMainActivity()
                             finish()
                         },
                         onSaveTrip = { updatedTrip ->
@@ -121,7 +122,6 @@ class EditTripActivity : ComponentActivity() {
             }
         }
     }
-
 
 private fun intentToMainActivity() {
         val intent = Intent(this@EditTripActivity, MainActivity::class.java)
