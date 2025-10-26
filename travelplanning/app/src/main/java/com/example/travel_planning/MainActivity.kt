@@ -77,11 +77,13 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         onAddTripClick = {
                             startActivity(Intent(this, AddTripActivity::class.java))
+                            finish()
                         },
                         onEditTripClick = { tripId ->
                             val intent = Intent(this, EditTripActivity::class.java)
                             intent.putExtra("TRIP_ID", tripId)
                             startActivity(intent)
+                            finish()
                         },
                         repository = repository,
                         tripsOverride = trips,

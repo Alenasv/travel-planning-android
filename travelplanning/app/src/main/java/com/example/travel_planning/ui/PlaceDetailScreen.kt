@@ -33,11 +33,17 @@ fun PlaceDetailScreen(
 ) {
     val listState = rememberLazyListState()
 
-    val showButton by remember {
+    val showScrollButton by remember {
         derivedStateOf {
             listState.firstVisibleItemScrollOffset < 10 || listState.firstVisibleItemIndex == 0
         }
     }
+    var showEnterAnimation by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300)
+        showEnterAnimation = true
+    }
+
     BackHandler() {
         onBackClick()
     }
@@ -139,7 +145,16 @@ fun PlaceDetailScreen(
                     }
                 }
                 AnimatedVisibility(
-                    visible = showButton,
+                    visible = showEnterAnimation && showScrollButton,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(400)
+                    ) + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it / 2 },
+                        animationSpec = androidx.compose.animation.core.tween(400)
+                    ),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(
+                        targetOffsetY = { it / 2 }
+                    ),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     Box(

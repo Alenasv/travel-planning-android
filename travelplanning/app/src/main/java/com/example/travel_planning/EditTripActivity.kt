@@ -81,7 +81,6 @@ class EditTripActivity : ComponentActivity() {
                         repository = repository,
                         onBackClick = {
                             intentToMainActivity()
-                            finish()
                         },
                         onSaveTrip = { updatedTrip ->
                             lifecycleScope.launch {
@@ -95,7 +94,6 @@ class EditTripActivity : ComponentActivity() {
                                 }
                                 withContext(Dispatchers.Main) {
                                     intentToMainActivity()
-                                    finish()
                                 }
                             }
                         },
@@ -103,6 +101,7 @@ class EditTripActivity : ComponentActivity() {
                             val intent = Intent(this@EditTripActivity, AddPlaceActivity::class.java)
                             intent.putExtra("TRIP_ID", tripId)
                             startActivity(intent)
+                            finish()
                         },
                         onRemovePlaceClick = { currentTripId, placeId ->
                             lifecycleScope.launch {
@@ -150,10 +149,10 @@ class EditTripActivity : ComponentActivity() {
             }
         }
     }
-
-private fun intentToMainActivity() {
+    private fun intentToMainActivity() {
         val intent = Intent(this@EditTripActivity, MainActivity::class.java)
         startActivity(intent)
+        finish()
     }
 
 }

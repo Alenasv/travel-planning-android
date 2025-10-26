@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.travel_planning.repository.TripRepository
+import com.example.travel_planning.utils.AnimatedFAB
 import com.example.travel_planning.utils.DeleteConfirmationDialog
 
 
@@ -70,6 +71,7 @@ fun TripEditScreen(
     var isTitleError by remember { mutableStateOf(false) }
     var isTouched by remember { mutableStateOf(false) }
     var showSaveError by remember { mutableStateOf(false) }
+    var showAddFab by remember { mutableStateOf(false) }
 
     val saveTrip = {
         isTouched = true
@@ -91,6 +93,10 @@ fun TripEditScreen(
     }
     BackHandler() {
         onBackClick()
+    }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300)
+        showAddFab = true
     }
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
@@ -194,40 +200,46 @@ fun TripEditScreen(
                         }
                     }
                 }
-
-                FloatingActionButton(
-                    onClick = {
-                        if (title.isNotEmpty()) {
-                            val updatedTrip = Trip(
-                                id = trip?.id ?: 0,
-                                title = title,
-                                date = date,
-                                places = places,
-                                notes = notes
-                            )
-                            onAddPlaceClick(updatedTrip)
-                        } else {
-                            isTouched = true
-                            isTitleError = true
-                            showSaveError = true
-                        }
-                    },
-                    containerColor = if (title.isNotEmpty()) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    contentColor = if (title.isNotEmpty()) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    }
+                Box(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Добавить место",
-                    )
+                    AnimatedFAB(
+                        visible = showAddFab,
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                    ) {
+                        FloatingActionButton(
+                            onClick = {
+                                if (title.isNotEmpty()) {
+                                    val updatedTrip = Trip(
+                                        id = trip?.id ?: 0,
+                                        title = title,
+                                        date = date,
+                                        places = places,
+                                        notes = notes
+                                    )
+                                    onAddPlaceClick(updatedTrip)
+                                } else {
+                                    isTouched = true
+                                    isTitleError = true
+                                    showSaveError = true
+                                }
+                            },
+                            containerColor = if (title.isNotEmpty()) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            contentColor = if (title.isNotEmpty()) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Добавить место")
+                        }
+                    }
                 }
+
             }
         }
     ) { innerPadding ->

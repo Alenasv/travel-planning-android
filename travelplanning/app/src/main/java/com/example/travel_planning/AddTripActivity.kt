@@ -32,13 +32,11 @@ class AddTripActivity : ComponentActivity() {
                         trip = null,
                         tripId = createdTripId,
                         repository = repository,
-                        onBackClick = { finish() },
+                        onBackClick = {intentToMainActivity() },
                         onSaveTrip = { newTrip ->
                             lifecycleScope.launch {
                                 saveTrip(newTrip.title, newTrip.date, newTrip.notes)
-                                val intentToMainActivity = Intent(this@AddTripActivity, MainActivity::class.java)
-                                startActivity(intentToMainActivity)
-                                finish()
+                                intentToMainActivity()
                             }
                         },
                         onAddPlaceClick = { newTrip ->
@@ -61,6 +59,12 @@ class AddTripActivity : ComponentActivity() {
         }
     }
 
+    private fun intentToMainActivity() {
+        val intentToMainActivity = Intent(this@AddTripActivity, MainActivity::class.java)
+        startActivity(intentToMainActivity)
+        finish()
+    }
+
     private suspend fun saveTrip(name: String, date: String, notes: String): Long {
         return withContext(Dispatchers.IO) {
             val tripId = repository.createTrip(name, date, notes)
@@ -73,5 +77,6 @@ class AddTripActivity : ComponentActivity() {
         val intentToAddPlaceActivity = Intent(this, AddPlaceActivity::class.java)
         intentToAddPlaceActivity.putExtra("TRIP_ID", tripId)
         startActivity(intentToAddPlaceActivity)
+        finish()
     }
 }

@@ -66,7 +66,8 @@ class AddPlaceActivity : ComponentActivity() {
                         tripId = tripId,
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
-                        onBackClick = { finish() },
+                        onBackClick = {
+                            intentToEditTripActivity(tripId) },
                         onPlaceClick = { place,isSelected ->
                             val intentToPlaceDetailActivity = Intent(this@AddPlaceActivity, PlaceDetailActivity::class.java)
                             intentToPlaceDetailActivity.putExtra("PLACE_ID", place.id)
@@ -93,16 +94,19 @@ class AddPlaceActivity : ComponentActivity() {
                                     currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
                                         .forEach { repository.removePlaceFromTrip(tripId, it) }
                                 }
-
-                                val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
-                                intentToEditTripActivity.putExtra("TRIP_ID", tripId)
-                                startActivity(intentToEditTripActivity)
-                                finish()
+                                intentToEditTripActivity(tripId)
                             }
                         }
                     )
                 }
             }
         }
+    }
+
+    private fun intentToEditTripActivity(tripId:Long) {
+        val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+        intentToEditTripActivity.putExtra("TRIP_ID", tripId)
+        startActivity(intentToEditTripActivity)
+        finish()
     }
 }

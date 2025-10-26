@@ -415,7 +415,6 @@ fun MainFABs(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         AnimatedFAB(
             visible = showAddFab && !isSelectionMode,
