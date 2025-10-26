@@ -127,7 +127,7 @@ class EditTripActivity : ComponentActivity() {
                     )
                     if (showDeleteDialog.value) {
                         DeleteConfirmationDialog(
-                            title = "Вы уверены, что хотите удалить поездку?",
+                            title = "Вы уверены, что хотите удалить?",
                             onConfirm = {
                                 lifecycleScope.launch {
                                     withContext(Dispatchers.IO) {
