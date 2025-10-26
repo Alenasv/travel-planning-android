@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.travel_planning.repository.getTripForUI
+import com.example.travel_planning.utils.DeleteConfirmationDialog
 
 class EditTripActivity : ComponentActivity() {
 
@@ -25,6 +26,7 @@ class EditTripActivity : ComponentActivity() {
     private var tripId: Long = -1
 
     private val tripState = mutableStateOf<Trip?>(null)
+    private val showDeleteDialog = mutableStateOf(false)
 
     private val placeDetailLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -61,6 +63,7 @@ class EditTripActivity : ComponentActivity() {
         setContent {
             TravelPlanningTheme {
                 Surface {
+
                     LaunchedEffect(Unit) {
                         val loadedTrip = repository.getTripForUI(tripId)
                         tripState.value = loadedTrip
@@ -116,8 +119,33 @@ class EditTripActivity : ComponentActivity() {
                             intent.putExtra("TRIP_ID", tripId)
                             intent.putExtra("IS_SELECTED", true)
                             placeDetailLauncher.launch(intent)
+                        },
+                        deleteTrip = {
+                            showDeleteDialog.value = true
                         }
+
                     )
+                    if (showDeleteDialog.value) {
+                        DeleteConfirmationDialog(
+                            title = "Вы уверены, что хотите удалить поездку?",
+                            onConfirm = {
+                                lifecycleScope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        repository.deleteTripById(tripId)
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        showDeleteDialog.value = false
+                                        intentToMainActivity()
+                                        finish()
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                showDeleteDialog.value = false
+                            }
+                        )
+                    }
+
                 }
             }
         }
@@ -127,4 +155,5 @@ private fun intentToMainActivity() {
         val intent = Intent(this@EditTripActivity, MainActivity::class.java)
         startActivity(intent)
     }
+
 }

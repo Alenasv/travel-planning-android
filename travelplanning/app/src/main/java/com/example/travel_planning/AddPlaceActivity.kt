@@ -99,7 +99,8 @@ class AddPlaceActivity : ComponentActivity() {
                                 startActivity(intentToEditTripActivity)
                                 finish()
                             }
-                        }
+                        },
+
                     )
                 }
             }

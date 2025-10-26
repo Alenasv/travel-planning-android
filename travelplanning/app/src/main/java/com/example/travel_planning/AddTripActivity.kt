@@ -53,7 +53,8 @@ class AddTripActivity : ComponentActivity() {
                             }
                         },
                         onPlaceClick = { place ->
-                        }
+                        },
+                        deleteTrip = {}
                     )
                 }
             }

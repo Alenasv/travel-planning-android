@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.travel_planning.repository.TripRepository
+import com.example.travel_planning.utils.DeleteConfirmationDialog
 
 
 data class Trip(
@@ -48,6 +49,7 @@ fun TripEditScreen(
     repository: TripRepository?=null,
     onBackClick: () -> Unit,
     onSaveTrip: (Trip) -> Unit,
+    deleteTrip: () -> Unit,
     onAddPlaceClick: (Trip) -> Unit,
     onRemovePlaceClick: (Long, String) -> Unit,
     onPlaceClick: (Place) -> Unit,
@@ -62,6 +64,7 @@ fun TripEditScreen(
     var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
     var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date) }
     var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
+    val showDeleteDialog = remember { mutableStateOf(false) }
 
     var isTitleError by remember { mutableStateOf(false) }
     var isTouched by remember { mutableStateOf(false) }
@@ -113,31 +116,50 @@ fun TripEditScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = saveTrip,
-                        enabled = title.isNotEmpty()
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Сохранить",
-                                tint = if (title.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-                                }
-                            )
-                            if (showSaveError) {
-                                Text(
-                                    text = "✗",
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.offset(y = (-4).dp)
+                    Row {
+                        if (isEditing) {
+                            IconButton(
+                                onClick = { deleteTrip()},
+                                enabled = title.isNotEmpty()
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Удалить",
+                                    tint = if (title.isNotEmpty()) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                                    }
                                 )
                             }
                         }
+
+                        IconButton(
+                            onClick = saveTrip,
+                            enabled = title.isNotEmpty()
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = "Сохранить",
+                                    tint = if (title.isNotEmpty()) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+                                    }
+                                )
+                                if (showSaveError) {
+                                    Text(
+                                        text = "✗",
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.offset(y = (-4).dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                }
+        }
             )
         },
         floatingActionButton = {
@@ -512,7 +534,8 @@ fun TripEditScreenPreview() {
             onSaveTrip = {},
             onAddPlaceClick = {},
             onRemovePlaceClick = { tripId, placeId -> },
-            onPlaceClick = {}
+            onPlaceClick = {},
+            deleteTrip = {}
         )
     }
 }
