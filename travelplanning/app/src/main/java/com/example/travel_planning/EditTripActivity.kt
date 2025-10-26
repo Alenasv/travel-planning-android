@@ -4,7 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
@@ -14,13 +17,34 @@ import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.*
 import com.example.travel_planning.repository.getTripForUI
 
 class EditTripActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
     private var tripId: Long = -1
+
+    private val tripState = mutableStateOf<Trip?>(null)
+
+    private val placeDetailLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data
+        if (result.resultCode == RESULT_OK && data != null) {
+            val placeId = data.getStringExtra("PLACE_ID")
+            val isSelected = data.getBooleanExtra("IS_SELECTED", true)
+
+            if (placeId != null && !isSelected) {
+                lifecycleScope.launch {
+                    repository.removePlaceFromTrip(tripId, placeId)
+                    val updatedTrip = repository.getTripForUI(tripId)
+                    withContext(Dispatchers.Main) {
+                        tripState.value = updatedTrip
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,14 +61,13 @@ class EditTripActivity : ComponentActivity() {
         setContent {
             TravelPlanningTheme {
                 Surface {
-                    var trip by remember { mutableStateOf<Trip?>(null) }
-
                     LaunchedEffect(Unit) {
-                        trip = repository.getTripForUI(tripId)
+                        val loadedTrip = repository.getTripForUI(tripId)
+                        tripState.value = loadedTrip
                     }
 
                     TripEditScreen(
-                        trip = trip ?: Trip(
+                        trip = tripState.value ?: Trip(
                             id = 0,
                             title = "",
                             date = "",
@@ -54,8 +77,8 @@ class EditTripActivity : ComponentActivity() {
                         tripId = tripId,
                         repository = repository,
                         onBackClick = {
-                            intentToMainActivity()
-                            finish() },
+                            finish()
+                        },
                         onSaveTrip = { updatedTrip ->
                             lifecycleScope.launch {
                                 withContext(Dispatchers.IO) {
@@ -73,22 +96,25 @@ class EditTripActivity : ComponentActivity() {
                             }
                         },
                         onAddPlaceClick = {
-                            val intentToAddPlaceActivity = Intent(this@EditTripActivity, AddPlaceActivity::class.java)
-                            intentToAddPlaceActivity.putExtra("TRIP_ID", tripId)
-                            startActivity(intentToAddPlaceActivity)
+                            val intent = Intent(this@EditTripActivity, AddPlaceActivity::class.java)
+                            intent.putExtra("TRIP_ID", tripId)
+                            startActivity(intent)
                         },
                         onRemovePlaceClick = { currentTripId, placeId ->
                             lifecycleScope.launch {
                                 repository.removePlaceFromTrip(currentTripId, placeId)
+                                val updatedTrip = repository.getTripForUI(tripId)
+                                withContext(Dispatchers.Main) {
+                                    tripState.value = updatedTrip
+                                }
                             }
                         },
                         onPlaceClick = { place ->
-                            val isSelected=true
                             val intent = Intent(this, PlaceDetailActivity::class.java)
                             intent.putExtra("PLACE_ID", place.id)
                             intent.putExtra("TRIP_ID", tripId)
-                            intent.putExtra("IS_SELECTED", isSelected)
-                            startActivity(intent)
+                            intent.putExtra("IS_SELECTED", true)
+                            placeDetailLauncher.launch(intent)
                         }
                     )
                 }
@@ -96,7 +122,8 @@ class EditTripActivity : ComponentActivity() {
         }
     }
 
-    private fun intentToMainActivity() {
+
+private fun intentToMainActivity() {
         val intent = Intent(this@EditTripActivity, MainActivity::class.java)
         startActivity(intent)
     }
