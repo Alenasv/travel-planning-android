@@ -1,4 +1,5 @@
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -48,6 +49,9 @@ fun AddToRouteScreen(
     onPlaceClick: (Place,Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit
 ) {
+    BackHandler() {
+        onBackClick()
+    }
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
         topBar = {

@@ -88,6 +88,7 @@ fun MainScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedTrips = remember { mutableStateListOf<Long>() }
+    var showAddFab by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         onSelectionResetCallback?.invoke {
@@ -95,7 +96,10 @@ fun MainScreen(
             isSelectionMode = false
         }
     }
-
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300)
+        showAddFab = true
+    }
     LaunchedEffect(tripsOverride) {
         tripsOverride?.let {
             trips = it
@@ -161,6 +165,7 @@ fun MainScreen(
             MainFABs(
                 isSelectionMode = isSelectionMode,
                 onAddClick = onAddTripClick,
+                showAddFab = showAddFab,
                 onDeleteClick = handleDeleteClick
             )
         }
@@ -403,6 +408,7 @@ fun ListItemCard(
 @Composable
 fun MainFABs(
     isSelectionMode: Boolean,
+    showAddFab: Boolean,
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -412,7 +418,7 @@ fun MainFABs(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         AnimatedFAB(
-            visible = !isSelectionMode,
+            visible = showAddFab && !isSelectionMode,
             modifier = Modifier.align(Alignment.BottomEnd)
         ) {
             FloatingActionButton(

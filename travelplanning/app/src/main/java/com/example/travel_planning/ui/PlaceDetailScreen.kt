@@ -1,6 +1,7 @@
 package com.example.travel_planning.ui
 
 import Place
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,7 +38,9 @@ fun PlaceDetailScreen(
             listState.firstVisibleItemScrollOffset < 10 || listState.firstVisibleItemIndex == 0
         }
     }
-
+    BackHandler() {
+        onBackClick()
+    }
     Scaffold(
         topBar = {
             TopAppBar(

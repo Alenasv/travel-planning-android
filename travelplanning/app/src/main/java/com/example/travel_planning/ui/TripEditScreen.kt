@@ -1,6 +1,7 @@
 package com.example.travel_planning.ui
 
 import Place
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -88,7 +89,9 @@ fun TripEditScreen(
             showSaveError = true
         }
     }
-
+    BackHandler() {
+        onBackClick()
+    }
     Scaffold(
         modifier = Modifier.statusBarsPadding(),
         topBar = {
