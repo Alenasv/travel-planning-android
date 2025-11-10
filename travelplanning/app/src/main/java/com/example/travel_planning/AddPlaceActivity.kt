@@ -23,15 +23,21 @@ import kotlinx.coroutines.withContext
 class AddPlaceActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
+    private var isNewTrip = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val tripId = intent.getLongExtra("TRIP_ID", -1)
+        isNewTrip = intent.getBooleanExtra("IS_NEW_TRIP", false)
+
+        if (tripId == -1L) {
+            finish()
+            return
+        }
+
         val db = AppDatabase.getDatabase(applicationContext)
         repository = TripRepository(db)
-
-        val tripId = intent.getLongExtra("TRIP_ID", -1)
-        if (tripId == -1L) finish()
 
         val allPlaces: List<Place> = loadJsonListFromAssets(this, "all_places.json")
 
@@ -60,20 +66,20 @@ class AddPlaceActivity : ComponentActivity() {
                         }
                     }
 
-
-
                     AddToRouteScreen(
                         tripId = tripId,
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = {
-                            intentToEditTripActivity(tripId) },
-                        onPlaceClick = { place,isSelected ->
+                            intentToNextActivity(tripId, isNewTrip)
+                        },
+                        onPlaceClick = { place, isSelected ->
                             val intentToPlaceDetailActivity = Intent(this@AddPlaceActivity, PlaceDetailActivity::class.java)
                             intentToPlaceDetailActivity.putExtra("PLACE_ID", place.id)
                             intentToPlaceDetailActivity.putExtra("TRIP_ID", tripId)
                             intentToPlaceDetailActivity.putExtra("IS_SELECTED", isSelected)
                             placeDetailLauncher.launch(intentToPlaceDetailActivity)
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
                         onTogglePlace = { placeId, toggled ->
                             selectedPlacesIds.value = if (toggled)
@@ -94,7 +100,7 @@ class AddPlaceActivity : ComponentActivity() {
                                     currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
                                         .forEach { repository.removePlaceFromTrip(tripId, it) }
                                 }
-                                intentToEditTripActivity(tripId)
+                                intentToNextActivity(tripId, isNewTrip)
                             }
                         }
                     )
@@ -103,10 +109,14 @@ class AddPlaceActivity : ComponentActivity() {
         }
     }
 
-    private fun intentToEditTripActivity(tripId:Long) {
-        val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
-        intentToEditTripActivity.putExtra("TRIP_ID", tripId)
+    private fun intentToNextActivity(tripId: Long, isNewTrip: Boolean) {
+            val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+            intentToEditTripActivity.putExtra("TRIP_ID", tripId)
+        if (isNewTrip) {
+            intentToEditTripActivity.putExtra("IS_NEW_TRIP", true)
+        }
         startActivity(intentToEditTripActivity)
+        overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
         finish()
     }
 }

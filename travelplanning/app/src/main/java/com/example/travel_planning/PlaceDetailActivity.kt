@@ -30,7 +30,8 @@ class PlaceDetailActivity : ComponentActivity() {
                     PlaceDetailScreen(
                         place = currentPlace,
                         isSelected = isSelected,
-                        onBackClick = { finish() },
+                        onBackClick = { finish()
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)},
                         onAddToRoute = {
                             val resultIntent = Intent().apply {
                                 putExtra("PLACE_ID", placeId)

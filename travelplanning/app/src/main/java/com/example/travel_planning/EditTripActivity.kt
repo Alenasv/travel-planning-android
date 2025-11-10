@@ -19,14 +19,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.travel_planning.repository.getTripForUI
 import com.example.travel_planning.utils.DeleteConfirmationDialog
+import com.example.travel_planning.utils.UnsavedTripDialog
 
 class EditTripActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
     private var tripId: Long = -1
-
+    private var isNewTrip = false
     private val tripState = mutableStateOf<Trip?>(null)
     private val showDeleteDialog = mutableStateOf(false)
+    private val showUnsavedDialog = mutableStateOf(false)
+    private var currentTripForDialog: Trip? = null
+    private var hiddenPlacesIdsForDialog = listOf<String>()
 
     private val placeDetailLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -52,6 +56,8 @@ class EditTripActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         tripId = intent.getLongExtra("TRIP_ID", -1)
+        isNewTrip = intent.getBooleanExtra("IS_NEW_TRIP", false)
+
         if (tripId == -1L) {
             finish()
             return
@@ -63,7 +69,6 @@ class EditTripActivity : ComponentActivity() {
         setContent {
             TravelPlanningTheme {
                 Surface {
-
                     LaunchedEffect(Unit) {
                         val loadedTrip = repository.getTripForUI(tripId)
                         tripState.value = loadedTrip
@@ -79,37 +84,25 @@ class EditTripActivity : ComponentActivity() {
                         ),
                         tripId = tripId,
                         repository = repository,
-                        onBackClick = {
-                            intentToMainActivity()
+                        onBackClick = { currentTrip ->
+                            handleBack(currentTrip)
                         },
                         onSaveTrip = { updatedTrip ->
-                            lifecycleScope.launch {
-                                withContext(Dispatchers.IO) {
-                                    repository.updateTrip(
-                                        tripId = tripId,
-                                        name = updatedTrip.title,
-                                        date = updatedTrip.date,
-                                        notes = updatedTrip.notes
-                                    )
-                                }
-                                withContext(Dispatchers.Main) {
-                                    intentToMainActivity()
-                                }
+                            saveTripAndGoToMain(updatedTrip) {
+                                intentToMainActivity()
                             }
                         },
                         onAddPlaceClick = {
                             val intent = Intent(this@EditTripActivity, AddPlaceActivity::class.java)
                             intent.putExtra("TRIP_ID", tripId)
+                            intent.putExtra("IS_NEW_TRIP", isNewTrip)
                             startActivity(intent)
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                             finish()
                         },
                         onRemovePlaceClick = { currentTripId, placeId ->
-                            lifecycleScope.launch {
+                            lifecycleScope.launch(Dispatchers.IO) {
                                 repository.removePlaceFromTrip(currentTripId, placeId)
-                                val updatedTrip = repository.getTripForUI(tripId)
-                                withContext(Dispatchers.Main) {
-                                    tripState.value = updatedTrip
-                                }
                             }
                         },
                         onPlaceClick = { place ->
@@ -121,6 +114,10 @@ class EditTripActivity : ComponentActivity() {
                         },
                         deleteTrip = {
                             showDeleteDialog.value = true
+                        },
+
+                        onHiddenPlacesChanged = { hiddenPlaces ->
+                            hiddenPlacesIdsForDialog = hiddenPlaces
                         }
 
                     )
@@ -144,15 +141,104 @@ class EditTripActivity : ComponentActivity() {
                             }
                         )
                     }
+                    if (showUnsavedDialog.value) {
+                        UnsavedTripDialog(
+                            onSave = {
+                                showUnsavedDialog.value = false
+                                val tripToSave = currentTripForDialog ?: return@UnsavedTripDialog
 
+                                println("DEBUG: Saving trip with ${hiddenPlacesIdsForDialog.size} hidden places: $hiddenPlacesIdsForDialog")
+
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    repository.updateTrip(
+                                        tripToSave.id,
+                                        tripToSave.title,
+                                        tripToSave.date,
+                                        tripToSave.notes
+                                    )
+
+                                    hiddenPlacesIdsForDialog.forEach { placeId ->
+                                        println("DEBUG: Removing place $placeId from trip $tripId")
+                                        repository.removePlaceFromTrip(tripId, placeId)
+                                    }
+
+                                    withContext(Dispatchers.Main) {
+                                        intentToMainActivity()
+                                    }
+                                }
+                            },
+                            onDelete = {
+                                showUnsavedDialog.value = false
+                                if (isNewTrip) {
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        repository.deleteTripById(tripId)
+                                    }
+                                }
+                                intentToMainActivity()
+                            },
+                            onDismiss = {
+                                showUnsavedDialog.value = false
+                            }
+                        )
+                    }
                 }
             }
         }
     }
+
+    private fun saveTripAndGoToMain(trip: Trip?, onComplete: () -> Unit = {}) {
+        if (trip != null) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                repository.updateTrip(trip.id, trip.title, trip.date, trip.notes)
+                withContext(Dispatchers.Main) {
+                    onComplete()
+                }
+            }
+        } else {
+            onComplete()
+        }
+    }
+
     private fun intentToMainActivity() {
         val intent = Intent(this@EditTripActivity, MainActivity::class.java)
         startActivity(intent)
+        overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
         finish()
     }
 
+    private fun handleBack(currentTrip: Trip) {
+        currentTripForDialog = currentTrip
+
+        val originalTrip = tripState.value ?: return
+
+        val originalPlaces = originalTrip.places
+        val currentPlaceIds = currentTrip.places.map { it.id }.toSet()
+        val originalPlaceIds = originalPlaces.map { it.id }.toSet()
+        val calculatedHiddenPlaces = originalPlaceIds.minus(currentPlaceIds).toList()
+
+        hiddenPlacesIdsForDialog = calculatedHiddenPlaces
+
+        val hasChanges = currentTrip.title != originalTrip.title ||
+                currentTrip.date != originalTrip.date ||
+                currentTrip.notes != originalTrip.notes ||
+                calculatedHiddenPlaces.isNotEmpty()
+
+        if (isNewTrip) {
+            if (hasChanges) {
+                showUnsavedDialog.value = true
+            } else {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    repository.deleteTripById(tripId)
+                }
+                intentToMainActivity()
+            }
+            return
+        }
+
+        if (hasChanges) {
+            showUnsavedDialog.value = true
+        } else {
+            intentToMainActivity()
+        }
+    }
 }

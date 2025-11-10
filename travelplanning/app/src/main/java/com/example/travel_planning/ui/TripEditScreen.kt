@@ -37,7 +37,7 @@ import com.example.travel_planning.utils.DeleteConfirmationDialog
 
 
 data class Trip(
-    val id: Int = 0,
+    val id: Long = 0,
     val title: String = "",
     val date: String = "",
     val places: List<Place> = emptyList(),
@@ -49,12 +49,13 @@ fun TripEditScreen(
     trip: Trip? = null,
     tripId: Long? = null,
     repository: TripRepository?=null,
-    onBackClick: () -> Unit,
+    onBackClick: (Trip) -> Unit,
     onSaveTrip: (Trip) -> Unit,
     deleteTrip: () -> Unit,
     onAddPlaceClick: (Trip) -> Unit,
     onRemovePlaceClick: (Long, String) -> Unit,
     onPlaceClick: (Place) -> Unit,
+    onHiddenPlacesChanged: (List<String>) -> Unit = {}
 
 ) {
     val currentTrip = trip ?: Trip()
@@ -62,22 +63,29 @@ fun TripEditScreen(
     val places = remember(currentTrip.places) {
         mutableStateListOf<Place>().apply { addAll(currentTrip.places) }
     }
-
+    val hiddenPlacesIds = remember { mutableStateListOf<String>() }
+    LaunchedEffect(hiddenPlacesIds) {
+        onHiddenPlacesChanged(hiddenPlacesIds.toList())
+    }
     var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
     var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date) }
     var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
     val showDeleteDialog = remember { mutableStateOf(false) }
-
+    var tripState by remember { mutableStateOf(trip) }
     var isTitleError by remember { mutableStateOf(false) }
     var isTouched by remember { mutableStateOf(false) }
     var showSaveError by remember { mutableStateOf(false) }
     var showAddFab by remember { mutableStateOf(false) }
-
     val saveTrip = {
         isTouched = true
         isTitleError = title.isEmpty()
 
         if (title.isNotEmpty()) {
+            hiddenPlacesIds.forEach { placeId ->
+                tripId?.let { id ->
+                    onRemovePlaceClick(id, placeId)
+                }
+            }
             val updatedTrip = Trip(
                 id = trip?.id ?: 0,
                 title = title,
@@ -91,8 +99,29 @@ fun TripEditScreen(
             showSaveError = true
         }
     }
+    LaunchedEffect(currentTrip.places) {
+        places.clear()
+        places.addAll(currentTrip.places)
+        hiddenPlacesIds.clear()
+    }
+    fun softRemovePlace(placeId: String) {
+        hiddenPlacesIds.add(placeId)
+        val index = places.indexOfFirst { it.id == placeId }
+        if (index != -1) {
+            places.removeAt(index)
+        }
+    }
+
+    val currentTripToSend = Trip(
+        id = trip?.id ?: 0,
+        title = title,
+        date = date,
+        places = places, 
+        notes = notes
+    )
+
     BackHandler() {
-        onBackClick()
+        onBackClick(currentTripToSend)
     }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
@@ -116,8 +145,9 @@ fun TripEditScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
+                    IconButton(onClick = { onBackClick(currentTripToSend) }) {
+
+                    Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Назад",
                             tint = MaterialTheme.colorScheme.onPrimary
@@ -366,16 +396,11 @@ fun TripEditScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    places.forEachIndexed { index, place ->
+                    places.forEach { place ->
                         PlaceListItem(
                             place = place,
                             onRemoveClick = {
-                                if (index < places.size) {
-                                    val removedPlace = places.removeAt(index)
-                                    tripId?.let { id ->
-                                        onRemovePlaceClick(id, removedPlace.id)
-                                    }
-                                }
+                                softRemovePlace(place.id)
                             },
                             onPlaceClick = { clickedPlace ->
                                 onPlaceClick(clickedPlace)
@@ -392,16 +417,6 @@ fun TripEditScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Place,
-                            contentDescription = "Места",
-                            tint = if (title.isNotEmpty()) {
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            },
-                            modifier = Modifier.size(32.dp)
-                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text =   "Нажмите + чтобы добавить места",

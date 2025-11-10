@@ -4,6 +4,8 @@ import Place
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.db.entities.*
 import com.example.travel_planning.ui.Trip
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class TripRepository(private val db: AppDatabase) {
 
@@ -34,7 +36,6 @@ class TripRepository(private val db: AppDatabase) {
             false
         }
     }
-
     suspend fun deleteTripById(tripId: Long) {
         val tripWithPlaces = getTripWithPlaces(tripId)
         tripWithPlaces?.let {
@@ -74,7 +75,7 @@ class TripRepository(private val db: AppDatabase) {
 suspend fun TripRepository.getTripForUI(tripId: Long): Trip? {
     return getTripWithPlaces(tripId)?.let { tripWithPlaces ->
         Trip(
-            id = tripWithPlaces.trip.id_.toInt(),
+            id = tripWithPlaces.trip.id_,
             title = tripWithPlaces.trip.name,
             date = tripWithPlaces.trip.date ?: "",
             notes = tripWithPlaces.trip.notes ?: "",
@@ -92,3 +93,4 @@ suspend fun TripRepository.getTripForUI(tripId: Long): Trip? {
         )
     }
 }
+
