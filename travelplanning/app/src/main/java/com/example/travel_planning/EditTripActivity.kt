@@ -147,8 +147,6 @@ class EditTripActivity : ComponentActivity() {
                                 showUnsavedDialog.value = false
                                 val tripToSave = currentTripForDialog ?: return@UnsavedTripDialog
 
-                                println("DEBUG: Saving trip with ${hiddenPlacesIdsForDialog.size} hidden places: $hiddenPlacesIdsForDialog")
-
                                 lifecycleScope.launch(Dispatchers.IO) {
                                     repository.updateTrip(
                                         tripToSave.id,
@@ -158,7 +156,6 @@ class EditTripActivity : ComponentActivity() {
                                     )
 
                                     hiddenPlacesIdsForDialog.forEach { placeId ->
-                                        println("DEBUG: Removing place $placeId from trip $tripId")
                                         repository.removePlaceFromTrip(tripId, placeId)
                                     }
 
@@ -224,7 +221,12 @@ class EditTripActivity : ComponentActivity() {
                 calculatedHiddenPlaces.isNotEmpty()
 
         if (isNewTrip) {
-            if (hasChanges) {
+            val hasData = currentTrip.title.isNotBlank() ||
+                    currentTrip.date.isNotBlank() ||
+                    currentTrip.notes.isNotBlank() ||
+                    currentTrip.places.isNotEmpty()
+
+            if (hasData) {
                 showUnsavedDialog.value = true
             } else {
                 lifecycleScope.launch(Dispatchers.IO) {
