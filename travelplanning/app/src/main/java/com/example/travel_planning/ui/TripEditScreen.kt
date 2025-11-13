@@ -25,15 +25,30 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.utils.AnimatedFAB
-import com.example.travel_planning.utils.DeleteConfirmationDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDateRangePickerState
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 
 data class Trip(
@@ -68,7 +83,7 @@ fun TripEditScreen(
         onHiddenPlacesChanged(hiddenPlacesIds.toList())
     }
     var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
-    var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date) }
+    var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date.ifEmpty { "" }) }
     var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
     val showDeleteDialog = remember { mutableStateOf(false) }
     var tripState by remember { mutableStateOf(trip) }
@@ -116,7 +131,7 @@ fun TripEditScreen(
         id = trip?.id ?: 0,
         title = title,
         date = date,
-        places = places, 
+        places = places,
         notes = notes
     )
 
@@ -431,8 +446,7 @@ fun TripEditScreen(
                     }
                 }
             }
-
-            DatePickerButton(
+            DatePickerButtonWithBottomSheet(
                 selectedDate = date,
                 onDateSelected = { selectedDate ->
                     date = selectedDate
@@ -517,42 +531,246 @@ fun PlaceListItem(
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerButton(
+fun DatePickerButtonWithBottomSheet(
     selectedDate: String,
     onDateSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val iconColor by animateColorAsState(
-        targetValue = if (selectedDate.isEmpty()) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-        } else {
-            MaterialTheme.colorScheme.primary
-        },
-        label = "icon color animation"
-    )
+    var showDateRangePicker by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
 
-    OutlinedButton(
-        onClick = {/* календарь добавить */   },
-        modifier = modifier.height(56.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.primary
-        )
-    ) {
-        Icon(
-            imageVector = Icons.Default.DateRange,
-            contentDescription = "Календарь",
-            tint = iconColor,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = if (selectedDate.isEmpty()) "Выберите дату" else selectedDate,
-            style = MaterialTheme.typography.bodyMedium
-        )
+    val currentDates = remember(selectedDate) {
+        parseDateRange(selectedDate)
     }
+
+    val dateRangePickerState = rememberDateRangePickerState()
+
+    LaunchedEffect(showDateRangePicker) {
+        if (showDateRangePicker) {
+            if (currentDates.first != null && currentDates.second != null) {
+                dateRangePickerState.setSelection(
+                    currentDates.first,
+                    currentDates.second
+                )
+            } else if (currentDates.first != null) {
+                dateRangePickerState.setSelection(
+                    currentDates.first,
+                    currentDates.first
+                )
+            }
+        }
+    }
+
+    val currentStartDate by remember(dateRangePickerState.selectedStartDateMillis) {
+        derivedStateOf { dateRangePickerState.selectedStartDateMillis }
+    }
+    val currentEndDate by remember(dateRangePickerState.selectedEndDateMillis) {
+        derivedStateOf { dateRangePickerState.selectedEndDateMillis }
+    }
+
+    Column(modifier = modifier) {
+        OutlinedButton(
+            onClick = {
+                showDateRangePicker = true
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Icon(Icons.Default.DateRange, contentDescription = "Календарь")
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = if (selectedDate.isEmpty()) "Выберите даты" else selectedDate,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+
+    if (showDateRangePicker) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showDateRangePicker = false
+            },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            modifier = Modifier.height(screenHeight * 0.85f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.85f)
+            ) {
+                Text(
+                    text = "Выберите диапазон дат",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                val currentStartText = currentStartDate?.let { formatDateForCalendar(it) } ?: "—"
+                val currentEndText = currentEndDate?.let { formatDateForCalendar(it) } ?: "—"
+                Text(
+                    text = "$currentStartText — $currentEndText",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (currentStartDate != null && currentEndDate != null) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    }
+                )
+
+                if (currentStartDate == null || currentEndDate == null) {
+                    Text(
+                        text = "Выберите начальную и конечную даты",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    DateRangePicker(
+                        state = dateRangePickerState,
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        title = null,
+                        headline = null,
+                        showModeToggle = true,
+                        colors = DatePickerDefaults.colors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface,
+                            headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                            weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            subheadContentColor = MaterialTheme.colorScheme.onSurface,
+                            yearContentColor = MaterialTheme.colorScheme.onSurface,
+                            currentYearContentColor = MaterialTheme.colorScheme.primary,
+                            selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                            disabledDayContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            todayDateBorderColor = MaterialTheme.colorScheme.primary,
+                            dayInSelectionRangeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            dayInSelectionRangeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedDayContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                sheetState.hide()
+                            }.invokeOnCompletion {
+                                showDateRangePicker = false
+                            }
+                        },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("Отмена")
+                    }
+
+                    Button(
+                        onClick = {
+                            val startDate = dateRangePickerState.selectedStartDateMillis
+                            val endDate = dateRangePickerState.selectedEndDateMillis
+
+                            if (startDate != null && endDate != null) {
+                                val formattedRange = formatTripDateRange(startDate, endDate)
+                                onDateSelected(formattedRange)
+                            }
+
+                            scope.launch {
+                                sheetState.hide()
+                            }.invokeOnCompletion {
+                                showDateRangePicker = false
+                            }
+                        },
+                        enabled = dateRangePickerState.selectedStartDateMillis != null &&
+                                dateRangePickerState.selectedEndDateMillis != null
+                    ) {
+                        Text("Сохранить")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+fun formatTripDateRange(startDate: Long?, endDate: Long?): String {
+    return when {
+        startDate == null -> ""
+        endDate == null -> formatDateForDisplay(startDate)
+        startDate == endDate -> formatDateForDisplay(startDate)
+        else -> "${formatDateForDisplay(startDate)} — ${formatDateForDisplay(endDate)}"
+    }
+}
+fun parseDateRange(dateRange: String): Pair<Long?, Long?> {
+    if (dateRange.isEmpty()) return null to null
+
+    return try {
+        val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        formatter.timeZone = TimeZone.getTimeZone("UTC")
+
+        if (dateRange.contains("—")) {
+            val parts = dateRange.split("—").map { it.trim() }
+            if (parts.size == 2) {
+                val startDate = formatter.parse(parts[0])?.time
+                val endDate = formatter.parse(parts[1])?.time
+                if (startDate != null && endDate != null && endDate < startDate) {
+                    startDate to startDate
+                } else {
+                    startDate to endDate
+                }
+            } else {
+                null to null
+            }
+        } else {
+            val singleDate = formatter.parse(dateRange)?.time
+            singleDate to singleDate
+        }
+    } catch (e: Exception) {
+        null to null
+    }
+}
+
+fun formatDateForDisplay(timestamp: Long): String {
+    val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    formatter.timeZone = TimeZone.getDefault()
+    return formatter.format(Date(timestamp))
+}
+
+fun formatDateForCalendar(timestamp: Long): String {
+    val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+    formatter.timeZone = TimeZone.getDefault()
+    return formatter.format(Date(timestamp))
 }
 
 @Preview(showBackground = true)
