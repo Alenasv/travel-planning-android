@@ -52,8 +52,14 @@ fun AddToRouteScreen(
     BackHandler() {
         onBackClick()
     }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primary)
+    ) {
     Scaffold(
-        modifier = Modifier.statusBarsPadding(),
+        modifier = Modifier
+            .statusBarsPadding(),
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -113,6 +119,7 @@ fun AddToRouteScreen(
             }
         }
     }
+}
 }
 
 @Composable

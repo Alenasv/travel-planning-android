@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -160,6 +159,7 @@ fun MainScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primary)
             .statusBarsPadding(),
         floatingActionButton = {
             MainFABs(
