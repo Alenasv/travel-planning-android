@@ -71,7 +71,7 @@ class AddPlaceActivity : ComponentActivity() {
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = {
-                            setResult(RESULT_CANCELED)
+                            setResult(RESULT_OK)
                             finish()
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
