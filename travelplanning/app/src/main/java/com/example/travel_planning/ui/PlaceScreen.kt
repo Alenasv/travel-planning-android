@@ -1,4 +1,3 @@
-
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -12,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -49,77 +50,183 @@ fun AddToRouteScreen(
     onPlaceClick: (Place,Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit
 ) {
+    val allCategories = remember(places) {
+        listOf("Все") + places.map { it.category }.distinct()
+    }
+
+    var selectedCategory by remember { mutableStateOf("Все") }
+
+    val filteredPlaces = remember(places, selectedCategory) {
+        if (selectedCategory == "Все") {
+            places
+        } else {
+            places.filter { it.category == selectedCategory }
+        }
+    }
+
     BackHandler() {
         onBackClick()
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary)
     ) {
-    Scaffold(
-        modifier = Modifier
-            .statusBarsPadding(),
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                title = {
-                    Text(
-                        "Выбери места",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Назад",
-                            tint = MaterialTheme.colorScheme.onPrimary
+        Scaffold(
+            modifier = Modifier
+                .statusBarsPadding(),
+            topBar = {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    title = {
+                        Text(
+                            "Выбери места",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            val selected = places.filter { it.id in selectedPlacesIds }
-                            onSaveTrip(selected)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Назад",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "Сохранить",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                val selected = places.filter { it.id in selectedPlacesIds }
+                                onSaveTrip(selected)
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Сохранить",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Горизонтальный список категорий
+                CategoryFilter(
+                    categories = allCategories,
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category -> selectedCategory = category },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                // Сетка мест (используем filteredPlaces вместо places)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    items(filteredPlaces) { place ->  // Исправлено: filteredPlaces вместо places
+                        val isSelected = place.id in selectedPlacesIds
+                        PlaceCard(
+                            place = place,
+                            isSelected = isSelected,
+                            onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
+                            onPlaceClick = { onPlaceClick(place,isSelected) }
                         )
                     }
                 }
-            )
-        }
-    ) { paddingValues ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
-            items(places) { place ->
-                val isSelected = place.id in selectedPlacesIds
-                PlaceCard(
-                    place = place,
-                    isSelected = isSelected,
-                    onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
-                    onPlaceClick = { onPlaceClick(place,isSelected) }
-                )
             }
         }
     }
 }
+
+// Вынесенные функции за пределы AddToRouteScreen
+
+@Composable
+fun CategoryFilter(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+
+    Row(
+        modifier = modifier
+            .horizontalScroll(scrollState)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        categories.forEach { category ->
+            CategoryChip(
+                category = category,
+                isSelected = category == selectedCategory,
+                onClick = { onCategorySelected(category) }
+            )
+        }
+    }
+}
+@Composable
+fun CategoryChip(
+    category: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = category,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = containerColor,
+            labelColor = contentColor,
+            selectedContainerColor = containerColor,
+            selectedLabelColor = contentColor
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            selected = isSelected,
+            enabled = true,
+            borderColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outline
+            },
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
+            borderWidth = 1.dp
+        ),
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -173,9 +280,6 @@ fun PlaceCard(
                         )
                     }
                 }
-
-
-
             }
 
             Column(
@@ -223,13 +327,10 @@ fun PlaceCard(
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
-
-
             }
         }
     }
 }
-
 
 @Composable
 fun AdaptiveTitleText(
@@ -262,22 +363,20 @@ fun AdaptiveTitleText(
     )
 }
 
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewAddToRouteScreen() {
     val samplePlaces = listOf(
-        Place("1", "Эрмитаж", "адрес", "Музей", "описание", "", ""),
-        Place("2", "Петропавловская крепость", "адрес", "История", "описание", "", ""),
-        Place("3", "Исаакиевский собор", "адрес", "Архитектура", "описание", "", "")
+        Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", ""),
+        Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", ""),
+        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", "")
     )
     var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
     MaterialTheme {
         AddToRouteScreen(
             places = samplePlaces,
             onBackClick = {},
-            onSaveTrip = { selectedPlaces: List<Place> ->
-            },
+            onSaveTrip = { selectedPlaces: List<Place> -> },
             onPlaceClick = {place, isSelected->},
             tripId = 1L,
             selectedPlacesIds = setOf("1", "3"),
