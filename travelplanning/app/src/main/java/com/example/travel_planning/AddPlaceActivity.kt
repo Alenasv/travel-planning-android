@@ -71,7 +71,9 @@ class AddPlaceActivity : ComponentActivity() {
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = {
-                            intentToNextActivity(tripId, isNewTrip)
+                            setResult(RESULT_CANCELED)
+                            finish()
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
                         onPlaceClick = { place, isSelected ->
                             val intentToPlaceDetailActivity = Intent(this@AddPlaceActivity, PlaceDetailActivity::class.java)
@@ -100,23 +102,14 @@ class AddPlaceActivity : ComponentActivity() {
                                     currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
                                         .forEach { repository.removePlaceFromTrip(tripId, it) }
                                 }
-                                intentToNextActivity(tripId, isNewTrip)
+                                setResult(RESULT_OK)
+                                finish()
+                                overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                             }
                         }
                     )
                 }
             }
         }
-    }
-
-    private fun intentToNextActivity(tripId: Long, isNewTrip: Boolean) {
-            val intentToEditTripActivity = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
-            intentToEditTripActivity.putExtra("TRIP_ID", tripId)
-        if (isNewTrip) {
-            intentToEditTripActivity.putExtra("IS_NEW_TRIP", true)
-        }
-        startActivity(intentToEditTripActivity)
-        overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
-        finish()
     }
 }

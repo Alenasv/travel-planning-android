@@ -51,7 +51,18 @@ class EditTripActivity : ComponentActivity() {
             }
         }
     }
-
+    private val addPlaceLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            lifecycleScope.launch {
+                val updatedTrip = repository.getTripForUI(tripId)
+                withContext(Dispatchers.Main) {
+                    tripState.value = updatedTrip
+                }
+            }
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -96,9 +107,8 @@ class EditTripActivity : ComponentActivity() {
                             val intent = Intent(this@EditTripActivity, AddPlaceActivity::class.java)
                             intent.putExtra("TRIP_ID", tripId)
                             intent.putExtra("IS_NEW_TRIP", isNewTrip)
-                            startActivity(intent)
+                            addPlaceLauncher.launch(intent)
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                            finish()
                         },
                         onRemovePlaceClick = { currentTripId, placeId ->
                             lifecycleScope.launch(Dispatchers.IO) {
