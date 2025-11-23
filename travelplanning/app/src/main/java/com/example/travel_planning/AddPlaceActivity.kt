@@ -102,7 +102,16 @@ class AddPlaceActivity : ComponentActivity() {
                                     currentPlaces.filter { it !in selectedPlaces.map { p -> p.id } }
                                         .forEach { repository.removePlaceFromTrip(tripId, it) }
                                 }
+
                                 setResult(RESULT_OK)
+
+                                if (isNewTrip) {
+                                    val intent = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+                                    intent.putExtra("TRIP_ID", tripId)
+                                    intent.putExtra("IS_NEW_TRIP", isNewTrip)
+                                    startActivity(intent)
+                                }
+
                                 finish()
                                 overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                             }
