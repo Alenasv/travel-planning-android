@@ -120,15 +120,13 @@ fun AddToRouteScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Горизонтальный список категорий
                 CategoryFilter(
                     categories = allCategories,
                     selectedCategory = selectedCategory,
                     onCategorySelected = { category -> selectedCategory = category },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                // Сетка мест (используем filteredPlaces вместо places)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -137,7 +135,7 @@ fun AddToRouteScreen(
                         .fillMaxSize()
                         .padding(16.dp)
                 ) {
-                    items(filteredPlaces) { place ->  // Исправлено: filteredPlaces вместо places
+                    items(filteredPlaces) { place ->
                         val isSelected = place.id in selectedPlacesIds
                         PlaceCard(
                             place = place,
@@ -152,8 +150,6 @@ fun AddToRouteScreen(
     }
 }
 
-// Вынесенные функции за пределы AddToRouteScreen
-
 @Composable
 fun CategoryFilter(
     categories: List<String>,
@@ -167,15 +163,22 @@ fun CategoryFilter(
         modifier = modifier
             .horizontalScroll(scrollState)
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Spacer(modifier = Modifier.width(16.dp))
+
         categories.forEach { category ->
             CategoryChip(
                 category = category,
                 isSelected = category == selectedCategory,
-                onClick = { onCategorySelected(category) }
+                onClick = { onCategorySelected(category) },
+                modifier = Modifier.padding(vertical = 4.dp)
             )
+            Spacer(modifier = Modifier.width(12.dp))
         }
+
+        Spacer(modifier = Modifier.width(16.dp))
     }
 }
 @Composable
@@ -185,33 +188,36 @@ fun CategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
     FilterChip(
         selected = isSelected,
         onClick = onClick,
         label = {
             Text(
                 text = category,
-                style = MaterialTheme.typography.labelMedium,
-                color = contentColor
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
             )
         },
+        modifier = modifier
+            .height(48.dp)
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = containerColor,
-            labelColor = contentColor,
-            selectedContainerColor = containerColor,
-            selectedLabelColor = contentColor
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            labelColor = if (isSelected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            iconColor = if (isSelected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
         ),
         border = FilterChipDefaults.filterChipBorder(
             selected = isSelected,
@@ -223,12 +229,11 @@ fun CategoryChip(
             },
             selectedBorderColor = MaterialTheme.colorScheme.primary,
             disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
-            borderWidth = 1.dp
-        ),
-        modifier = modifier
+            borderWidth = 2.dp,
+            selectedBorderWidth = 2.dp
+        )
     )
 }
-
 @Composable
 fun PlaceCard(
     place: Place,
@@ -369,7 +374,10 @@ fun PreviewAddToRouteScreen() {
     val samplePlaces = listOf(
         Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", ""),
         Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", ""),
-        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", "")
+        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", ""),
+        Place("4", "Кунсткамера", "адрес", "10:00-18:00", "Музей", "описание", ""),
+        Place("5", "Русский музей", "адрес", "10:00-18:00", "Музей", "описание", ""),
+        Place("6", "Мариинский театр", "адрес", "10:00-18:00", "Театр", "описание", "")
     )
     var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
     MaterialTheme {
