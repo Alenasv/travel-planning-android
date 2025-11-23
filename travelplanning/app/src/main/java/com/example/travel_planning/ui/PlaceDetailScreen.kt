@@ -1,6 +1,7 @@
 package com.example.travel_planning.ui
 
 import Place
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -10,7 +11,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,16 +28,25 @@ import coil.compose.rememberAsyncImagePainter
 fun PlaceDetailScreen(
     place: Place?,
     onBackClick: () -> Unit,
+    isSelected: Boolean,
     onAddToRoute: (Place) -> Unit
 ) {
     val listState = rememberLazyListState()
 
-    val showButton by remember {
+    val showScrollButton by remember {
         derivedStateOf {
             listState.firstVisibleItemScrollOffset < 10 || listState.firstVisibleItemIndex == 0
         }
     }
+    var showEnterAnimation by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(300)
+        showEnterAnimation = true
+    }
 
+    BackHandler() {
+        onBackClick()
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -136,7 +145,16 @@ fun PlaceDetailScreen(
                     }
                 }
                 AnimatedVisibility(
-                    visible = showButton,
+                    visible = showEnterAnimation && showScrollButton,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(400)
+                    ) + androidx.compose.animation.slideInVertically(
+                        initialOffsetY = { it / 2 },
+                        animationSpec = androidx.compose.animation.core.tween(400)
+                    ),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(
+                        targetOffsetY = { it / 2 }
+                    ),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     Box(
@@ -159,7 +177,10 @@ fun PlaceDetailScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
-                            Text("Добавить в маршрут", style = MaterialTheme.typography.titleMedium)
+                            Text(
+
+                                text = if (isSelected) "Убрать из маршрута" else "Добавить в маршрут",
+                                style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
@@ -194,7 +215,8 @@ fun PlaceDetailScreenPreview() {
         PlaceDetailScreen(
             place = place,
             onBackClick = { },
-            onAddToRoute = { }
+            onAddToRoute = { },
+            isSelected = true
         )
     }
 }
@@ -204,7 +226,8 @@ fun PlaceDetailScreenEmptyPreview() {
         PlaceDetailScreen(
             place = null,
             onBackClick = { },
-            onAddToRoute = { }
+            onAddToRoute = { },
+            isSelected = false
         )
     }
 }
