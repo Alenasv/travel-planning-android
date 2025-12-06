@@ -71,7 +71,15 @@ class AddPlaceActivity : ComponentActivity() {
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
                         onBackClick = {
-                            setResult(RESULT_OK)
+                            if (isNewTrip) {
+                                val intent = Intent(this@AddPlaceActivity, EditTripActivity::class.java)
+                                intent.putExtra("TRIP_ID", tripId)
+                                intent.putExtra("IS_NEW_TRIP", isNewTrip)
+                                setResult(RESULT_OK)
+                                startActivity(intent)
+                            } else {
+                                setResult(RESULT_OK)
+                            }
                             finish()
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
