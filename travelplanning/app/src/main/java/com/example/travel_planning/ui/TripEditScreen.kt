@@ -219,26 +219,7 @@ fun TripEditScreen(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
                             ),
                             modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = "Информация",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Сначала введите название",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    maxLines = 2
-                                )
-                            }
-                        }
+                        ) {}
                     }
                     Box(
                         modifier = Modifier.fillMaxSize()
