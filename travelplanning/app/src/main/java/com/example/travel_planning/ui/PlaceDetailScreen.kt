@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -119,7 +121,7 @@ fun PlaceDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(bottom = 24.dp)
                             ) {
-                                Icon(Icons.Default.LocationOn, contentDescription = "Время работы", modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.DateRange, contentDescription = "Время работы", modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text("Время работы", style = MaterialTheme.typography.bodySmall)

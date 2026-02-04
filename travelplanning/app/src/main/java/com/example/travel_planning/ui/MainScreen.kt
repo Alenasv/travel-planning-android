@@ -1,5 +1,6 @@
 package com.example.travel_planning.ui
 
+import Place
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -46,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,11 +57,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
+import coil.compose.AsyncImage
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.AnimatedFAB
 import com.example.travel_planning.utils.AnimatedListItem
+import com.example.travel_planning.utils.loadJsonListFromAssets
 import kotlinx.coroutines.launch
 
 data class ListItem(
@@ -68,14 +73,15 @@ data class ListItem(
 )
 
 data class GalleryItem(
-    val id: Int,
-    val color: Color,
-    val title: String
+    val category: String,
+    val imagePath: String
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     onAddTripClick: () -> Unit,
+    onGalleryItemClick: (String) -> Unit,
     repository: TripRepository? = null,
     tripsOverride: List<TripEntity>? = null,
     onEditTripClick: (Long) -> Unit,
@@ -144,17 +150,29 @@ fun MainScreen(
     val handleDeleteClick: () -> Unit = {
         onDeleteTrips(selectedTrips.toList())
     }
+    val context = LocalContext.current
 
-    val galleryItems = remember {
-        listOf(
-            GalleryItem(1, Color(0xFFFF6B6B), "Летний сад"),
-            GalleryItem(2, Color(0xFF4ECDC4), "Петропавловская крепость"),
-            GalleryItem(3, Color(0xFF45B7D1), "Исаакиевский собор"),
-            GalleryItem(4, Color(0xFF96CEB4), "Дворцовая площадь"),
-            GalleryItem(5, Color(0xFFF7DC6F), "Крейсер Аврора"),
-            GalleryItem(6, Color(0xFFBB8FCE), "Казанский собор")
-        )
+    val allPlaces: List<Place> = remember {
+        loadJsonListFromAssets(context, "all_places.json")
     }
+
+    val galleryItems = remember(allPlaces) {
+        allPlaces
+            .groupBy { it.category }
+            .mapNotNull { (category, placesInCategory) ->
+                placesInCategory
+                    .getOrNull(0)
+                    ?.image_filename
+                    ?.let { image ->
+                        GalleryItem(
+                            category = category,
+                            imagePath = image
+                        )
+                    }
+            }
+    }
+
+
 
     Scaffold(
         modifier = Modifier
@@ -217,8 +235,14 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(galleryItems) { item ->
-                            GalleryCard(item = item)
+                            GalleryCard(
+                                item = item,
+                                onClick = {
+                                    onGalleryItemClick(item.category)
+                                }
+                            )
                         }
+
                     }
                 }
 
@@ -272,39 +296,44 @@ fun MainScreen(
         }
     }
 }
-    @Composable
-    fun GalleryCard(item: GalleryItem) {
-        Card(
-            onClick = { /* переход на карточку из гелереи */ },
-            modifier = Modifier
-                .size(200.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
+@Composable
+fun GalleryCard(
+    item: GalleryItem,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.size(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box {
+            AsyncImage(
+                model = "file:///android_asset/${item.imagePath}",
+                contentDescription = item.category,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(item.color)
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .padding(13.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2
-                    )
-                }
+                Text(
+                    text = item.category,
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListItemCard(
@@ -459,7 +488,8 @@ fun MainScreenPreview() {
             tripsOverride = fakeTrips,
             onEditTripClick = {},
             onDeleteTrips = {},
-            onSelectionResetCallback = null
+            onSelectionResetCallback = null,
+            onGalleryItemClick = {}
         )
     }
 }
