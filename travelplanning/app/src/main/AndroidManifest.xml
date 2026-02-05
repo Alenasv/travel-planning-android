@@ -35,6 +35,8 @@
             android:exported="false" />
         <activity android:name=".AddFromTheCategory"
             android:exported="false" />
+        <activity android:name=".EditTripFromCategory"
+            android:exported="false" />
     </application>
 
 </manifest>

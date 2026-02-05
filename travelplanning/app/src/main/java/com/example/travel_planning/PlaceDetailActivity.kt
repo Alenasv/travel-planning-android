@@ -39,9 +39,8 @@ class PlaceDetailActivity : ComponentActivity() {
                             }
                             setResult(RESULT_OK, resultIntent)
                             finish()
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         }
-
-
                     )
                 }
             }
