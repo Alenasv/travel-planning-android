@@ -56,20 +56,24 @@ fun AddToRouteScreen(
     onBackClick: () -> Unit,
     onSaveTrip: (List<Place>) -> Unit,
     onPlaceClick: (Place, Boolean) -> Unit,
-    onTogglePlace: (String, Boolean) -> Unit
+    onTogglePlace: (String, Boolean) -> Unit,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
 ) {
     val allCategories = remember(places) {
         listOf("Все") + places.map { it.category }.distinct()
     }
+    var selectedCategoryState by remember(selectedCategory) {
+        mutableStateOf(selectedCategory)
+    }
 
-    var selectedCategory by remember { mutableStateOf("Все") }
     var searchQuery by remember { mutableStateOf(TextFieldValue()) }
     val focusManager = LocalFocusManager.current
     val gridState = rememberLazyGridState()
     val context = LocalContext.current
 
-    val filteredPlaces = remember(places, selectedCategory, searchQuery.text) {
-        if (selectedCategory == "Все" && searchQuery.text.isBlank()) {
+    val filteredPlaces = remember(places, selectedCategoryState, searchQuery.text) {
+        if (selectedCategoryState == "Все" && searchQuery.text.isBlank()) {
             return@remember places
         }
 
@@ -82,8 +86,8 @@ fun AddToRouteScreen(
             }
         }
 
-        if (selectedCategory != "Все") {
-            filtered = filtered.filter { it.category == selectedCategory }
+        if (selectedCategoryState != "Все") {
+            filtered = filtered.filter { it.category == selectedCategoryState }
         }
 
         filtered
@@ -100,6 +104,7 @@ fun AddToRouteScreen(
                 .take(5)
         }
     }
+
     fun handleSuggestionClick(suggestion: String) {
         searchQuery = TextFieldValue(suggestion)
 
@@ -111,9 +116,11 @@ fun AddToRouteScreen(
             }
 
             if (placesInSameCategory.size == 1) {
-                selectedCategory = foundPlace.category
+                selectedCategoryState = foundPlace.category
+                onCategorySelected(foundPlace.category)
             } else {
-                selectedCategory = "Все"
+                selectedCategoryState = "Все"
+                onCategorySelected("Все")
             }
         }
     }
@@ -183,7 +190,8 @@ fun AddToRouteScreen(
                     },
                     onClearClick = {
                         searchQuery = TextFieldValue()
-                        selectedCategory = "Все"
+                        selectedCategoryState = "Все"
+                        onCategorySelected("Все")
                         focusManager.clearFocus()
                     },
                     onSearch = {
@@ -206,15 +214,15 @@ fun AddToRouteScreen(
 
                 CategoryFilter(
                     categories = allCategories,
-                    selectedCategory = selectedCategory,
+                    selectedCategory = selectedCategoryState,
                     onCategorySelected = { category ->
-                        selectedCategory = category
-                        focusManager.clearFocus()
+                        selectedCategoryState = category
+                        onCategorySelected(category)
                     },
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                if (searchQuery.text.isNotBlank() || selectedCategory != "Все") {
+                if (searchQuery.text.isNotBlank() || selectedCategoryState != "Все") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -228,10 +236,11 @@ fun AddToRouteScreen(
                             modifier = Modifier.weight(1f)
                         )
 
-                        if (searchQuery.text.isNotBlank() && selectedCategory != "Все") {
+                        if (searchQuery.text.isNotBlank() && selectedCategoryState != "Все") {
                             TextButton(
                                 onClick = {
-                                    selectedCategory = "Все"
+                                    selectedCategoryState = "Все"
+                                    onCategorySelected("Все")
                                 },
                                 modifier = Modifier.padding(start = 8.dp)
                             ) {
@@ -262,14 +271,14 @@ fun AddToRouteScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         val message = when {
-                            searchQuery.text.isNotBlank() && selectedCategory != "Все" -> {
-                                "По запросу \"${searchQuery.text}\" в категории \"$selectedCategory\" ничего не найдено"
+                            searchQuery.text.isNotBlank() && selectedCategoryState != "Все" -> {
+                                "По запросу \"${searchQuery.text}\" в категории \"$selectedCategoryState\" ничего не найдено"
                             }
                             searchQuery.text.isNotBlank() -> {
                                 "По запросу \"${searchQuery.text}\" ничего не найдено"
                             }
-                            selectedCategory != "Все" -> {
-                                "В категории \"$selectedCategory\" нет мест"
+                            selectedCategoryState != "Все" -> {
+                                "В категории \"$selectedCategoryState\" нет мест"
                             }
                             else -> {
                                 "Места не найдены"
@@ -298,21 +307,23 @@ fun AddToRouteScreen(
                                 }
                             }
 
-                            if (selectedCategory != "Все") {
+                            if (selectedCategoryState != "Все") {
                                 TextButton(
                                     onClick = {
-                                        selectedCategory = "Все"
+                                        selectedCategoryState = "Все"
+                                        onCategorySelected("Все")
                                     }
                                 ) {
                                     Text("Показать все категории")
                                 }
                             }
 
-                            if (searchQuery.text.isNotBlank() && selectedCategory != "Все") {
+                            if (searchQuery.text.isNotBlank() && selectedCategoryState != "Все") {
                                 TextButton(
                                     onClick = {
                                         searchQuery = TextFieldValue()
-                                        selectedCategory = "Все"
+                                        selectedCategoryState = "Все"
+                                        onCategorySelected("Все")
                                         focusManager.clearFocus()
                                     }
                                 ) {
@@ -430,6 +441,7 @@ fun SearchBar(
         }
     }
 }
+
 @Composable
 fun SearchSuggestions(
     suggestions: List<String>,
@@ -478,6 +490,7 @@ fun SearchSuggestions(
         }
     }
 }
+
 @Composable
 fun CategoryFilter(
     categories: List<String>,
@@ -714,6 +727,8 @@ fun PreviewAddToRouteScreen() {
             onTogglePlace = { placeId, toggled ->
                 selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId
             },
+            selectedCategory = "Музей",
+            onCategorySelected = {}
         )
     }
 }

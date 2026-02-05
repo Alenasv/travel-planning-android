@@ -3,18 +3,16 @@ package com.example.travel_planning
 import Place
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
-import com.example.travel_planning.repository.getTripForUI
 import com.example.travel_planning.ui.Trip
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
@@ -29,83 +27,53 @@ import kotlinx.coroutines.withContext
 class EditTripFromCategory : ComponentActivity() {
 
     private lateinit var repository: TripRepository
-    private var createdTripId: Long? = null
     private var selectedPlaceIds = listOf<String>()
 
     private val showDeleteDialog = mutableStateOf(false)
     private val showUnsavedDialog = mutableStateOf(false)
     private var currentTripForDialog: Trip? = null
 
+    private val hiddenPlaceIds = mutableStateListOf<String>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val ids = intent.getStringArrayListExtra("SELECTED_PLACE_IDS")
-        selectedPlaceIds = ids ?: emptyList()
 
+        selectedPlaceIds = intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: emptyList()
         val db = AppDatabase.getDatabase(applicationContext)
         repository = TripRepository(db)
 
         setContent {
+            val initialTrip = remember { mutableStateOf<Trip?>(null) }
+
             TravelPlanningTheme {
                 Surface {
-                    val allSelectedPlaces = remember { mutableStateListOf<Place>() }
-                    val hiddenPlaceIds = remember { mutableStateMapOf<String, Boolean>() }
-
+                    val visiblePlaces = remember { mutableStateListOf<Place>() }
                     var currentTrip by remember { mutableStateOf(Trip(places = emptyList())) }
 
-                    val updateVisiblePlaces: () -> Unit = {
-                        val visiblePlaces = allSelectedPlaces.filter { place ->
-                            !hiddenPlaceIds.containsKey(place.id) || hiddenPlaceIds[place.id] != true
-                        }
+                    val placeDetailLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult()
+                    ) { result ->
+                        if (result.resultCode == RESULT_OK && result.data != null) {
+                            val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
+                            val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
 
-                        currentTrip = currentTrip.copy(places = visiblePlaces)
+                            if (!isSelected) {
+                                visiblePlaces.removeAll { it.id == placeId }
+                                hiddenPlaceIds.add(placeId)
+                            } else {
+                                val allPlaces: List<Place> = loadJsonListFromAssets(this, "all_places.json")
+                                val place = allPlaces.find { it.id == placeId }
+                                if (place != null && visiblePlaces.none { it.id == placeId } && !hiddenPlaceIds.contains(placeId)) {
+                                    visiblePlaces.add(place)
+                                }
+                                hiddenPlaceIds.remove(placeId)
+                            }
+
+                            currentTrip = currentTrip.copy(places = visiblePlaces.toList())
+                        }
                     }
 
-                    val placeDetailLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.StartActivityForResult(),
-                        onResult = { result ->
-                            if (result.resultCode == RESULT_OK && result.data != null) {
-                                val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
-                                val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
-
-                                lifecycleScope.launch(Dispatchers.Main) {
-                                    if (!isSelected) {
-                                        allSelectedPlaces.removeAll { it.id == placeId }
-
-                                        hiddenPlaceIds.remove(placeId)
-
-                                        updateVisiblePlaces()
-
-                                        createdTripId?.let { tripId ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                repository.removePlaceFromTrip(tripId, placeId)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    )
-
-                    val addPlaceLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.StartActivityForResult(),
-                        onResult = { result ->
-                            if (result.resultCode == RESULT_OK) {
-                                lifecycleScope.launch {
-                                    createdTripId?.let { tripId ->
-                                        val updatedTrip = repository.getTripForUI(tripId)
-                                        if (updatedTrip != null) {
-                                            allSelectedPlaces.clear()
-                                            allSelectedPlaces.addAll(updatedTrip.places)
-
-                                            updateVisiblePlaces()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    )
-
-                    LaunchedEffect(selectedPlaceIds) {
+                    LaunchedEffect(Unit) {
                         val places = withContext(Dispatchers.IO) {
                             val allPlaces: List<Place> = loadJsonListFromAssets(
                                 this@EditTripFromCategory,
@@ -114,59 +82,58 @@ class EditTripFromCategory : ComponentActivity() {
                             allPlaces.filter { it.id in selectedPlaceIds }
                         }
 
-                        allSelectedPlaces.clear()
-                        allSelectedPlaces.addAll(places)
+                        visiblePlaces.clear()
+                        visiblePlaces.addAll(places.filter { it.id !in hiddenPlaceIds })
 
-                        currentTrip = Trip(places = places)
+                        currentTrip = Trip(places = visiblePlaces.toList())
+                        initialTrip.value = currentTrip.copy()
+                    }
+
+                    val softRemovePlace: (String) -> Unit = { placeId ->
+                        hiddenPlaceIds.add(placeId)
+                        visiblePlaces.removeAll { it.id == placeId }
+                        currentTrip = currentTrip.copy(places = visiblePlaces.toList())
                     }
 
                     TripEditScreen(
-                        trip = currentTrip,
-                        tripId = createdTripId,
+                        trip = currentTrip.copy(places = visiblePlaces.toList()),
+                        onHiddenPlacesChanged = { ids ->
+                            hiddenPlaceIds.clear()
+                            hiddenPlaceIds.addAll(ids)
+                        },
+                        tripId = null,
                         repository = repository,
-                        onBackClick = { handleBack(currentTrip, allSelectedPlaces, hiddenPlaceIds) },
+                        onBackClick = {
+                            handleBack(currentTrip, visiblePlaces, initialTrip.value)
+                        },
                         onSaveTrip = { tripToSave ->
                             saveTripAndGoToMain(
-                                tripToSave,
-                                allSelectedPlaces.toList(),
-                                hiddenPlaceIds
+                                tripToSave.copy(places = visiblePlaces.toList()),
+                                visiblePlaces.toList()
                             ) { intentToMainActivity() }
                         },
                         onAddPlaceClick = {
                             val intent = Intent(this@EditTripFromCategory, AddPlaceActivity::class.java)
-                            intent.putExtra("TRIP_ID", createdTripId)
-                            addPlaceLauncher.launch(intent)
+                            intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(visiblePlaces.map { it.id }))
+                            startActivity(intent)
                         },
-                        onRemovePlaceClick = { tripId, placeId ->
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                if (createdTripId != null) {
-                                    repository.removePlaceFromTrip(tripId, placeId)
-                                }
-
-                                allSelectedPlaces.removeAll { it.id == placeId }
-
-                                hiddenPlaceIds.remove(placeId)
-
-                                withContext(Dispatchers.Main) {
-                                    updateVisiblePlaces()
-                                }
-                            }
+                        onRemovePlaceClick = { _, placeId ->
+                            softRemovePlace(placeId)
                         },
                         onPlaceClick = { place ->
                             val intent = Intent(this@EditTripFromCategory, PlaceDetailActivity::class.java)
                             intent.putExtra("PLACE_ID", place.id)
-                            intent.putExtra("TRIP_ID", createdTripId ?: 0L)
-                            intent.putExtra("IS_SELECTED", true)
+                            intent.putExtra("IS_SELECTED", visiblePlaces.any { it.id == place.id })
                             placeDetailLauncher.launch(intent)
                         },
-                        deleteTrip = { showDeleteDialog.value = true },
-                        onHiddenPlacesChanged = { hiddenPlaces ->
-                            hiddenPlaceIds.clear()
-                            hiddenPlaces.forEach { placeId ->
-                                hiddenPlaceIds[placeId] = true
-                            }
+                        deleteTrip = {
+                            val hasChanges = currentTrip.title.isNotBlank() ||
+                                    currentTrip.date.isNotBlank() ||
+                                    currentTrip.notes.isNotBlank() ||
+                                    visiblePlaces.isNotEmpty()
 
-                            updateVisiblePlaces()
+                            if (hasChanges) showDeleteDialog.value = true
+                            else intentToMainActivity()
                         }
                     )
 
@@ -175,11 +142,8 @@ class EditTripFromCategory : ComponentActivity() {
                             title = "Вы уверены, что хотите удалить?",
                             onConfirm = {
                                 lifecycleScope.launch {
-                                    createdTripId?.let { repository.deleteTripById(it) }
-                                    withContext(Dispatchers.Main) {
-                                        showDeleteDialog.value = false
-                                        intentToMainActivity()
-                                    }
+                                    showDeleteDialog.value = false
+                                    intentToMainActivity()
                                 }
                             },
                             onDismiss = { showDeleteDialog.value = false }
@@ -192,39 +156,12 @@ class EditTripFromCategory : ComponentActivity() {
                                 showUnsavedDialog.value = false
                                 val tripToSave = currentTripForDialog ?: return@UnsavedTripDialog
                                 lifecycleScope.launch(Dispatchers.IO) {
-                                    if (createdTripId == null) {
-                                        createdTripId = repository.createTrip(
-                                            tripToSave.title,
-                                            tripToSave.date,
-                                            tripToSave.notes
-                                        )
-                                    } else {
-                                        repository.updateTrip(
-                                            createdTripId!!,
-                                            tripToSave.title,
-                                            tripToSave.date,
-                                            tripToSave.notes
-                                        )
-                                    }
-
-                                    createdTripId?.let { tripId ->
-                                        allSelectedPlaces.forEach { place ->
-                                            repository.addPlaceToTrip(tripId, place.toEntity())
-                                        }
-
-                                        hiddenPlaceIds.keys.forEach { placeId ->
-                                            repository.removePlaceFromTrip(tripId, placeId)
-                                        }
-                                    }
-
+                                    saveTripToDatabase(tripToSave, visiblePlaces.toList())
                                     withContext(Dispatchers.Main) { intentToMainActivity() }
                                 }
                             },
                             onDelete = {
                                 showUnsavedDialog.value = false
-                                if (createdTripId != null) {
-                                    lifecycleScope.launch(Dispatchers.IO) { repository.deleteTripById(createdTripId!!) }
-                                }
                                 intentToMainActivity()
                             },
                             onDismiss = { showUnsavedDialog.value = false }
@@ -235,52 +172,40 @@ class EditTripFromCategory : ComponentActivity() {
         }
     }
 
-    private fun handleBack(
-        currentTrip: Trip,
-        allSelectedPlaces: SnapshotStateList<Place>,
-        hiddenPlaceIds: SnapshotStateMap<String, Boolean>
-    ) {
-        currentTripForDialog = currentTrip
+    private fun handleBack(currentTrip: Trip, visiblePlaces: List<Place>, initialTrip: Trip?) {
+        val displayedPlaces = visiblePlaces
+        val isTripEmpty = currentTrip.title.isBlank() &&
+                currentTrip.date.isBlank() &&
+                currentTrip.notes.isBlank() &&
+                displayedPlaces.isEmpty()
 
-        val currentVisiblePlaceIds = currentTrip.places.map { it.id }.toSet()
-        val allPlaceIds = allSelectedPlaces.map { it.id }.toSet()
-
-        val newHiddenIds = allPlaceIds.minus(currentVisiblePlaceIds)
-        hiddenPlaceIds.clear()
-        newHiddenIds.forEach { placeId ->
-            hiddenPlaceIds[placeId] = true
+        val hasChanges = initialTrip != null && initialTrip.let { init ->
+            init.title != currentTrip.title ||
+                    init.date != currentTrip.date ||
+                    init.notes != currentTrip.notes ||
+                    init.places.map { it.id } != displayedPlaces.map { it.id }
         }
 
-        val hasChanges = currentTrip.title.isNotBlank() ||
-                currentTrip.date.isNotBlank() ||
-                currentTrip.notes.isNotBlank() ||
-                newHiddenIds.isNotEmpty()
 
-        if (hasChanges) showUnsavedDialog.value = true else intentToMainActivity()
+
+        if (hasChanges && !isTripEmpty) {
+            currentTripForDialog = currentTrip.copy(places = displayedPlaces)
+            showUnsavedDialog.value = true
+        } else {
+            intentToMainActivity()
+        }
+
     }
 
-    private fun saveTripAndGoToMain(
-        trip: Trip,
-        allSelectedPlaces: List<Place>,
-        hiddenPlaceIds: Map<String, Boolean>,
-        onComplete: () -> Unit = {}
-    ) {
-        lifecycleScope.launch {
-            val tripId = createdTripId ?: withContext(Dispatchers.IO) {
-                repository.createTrip(trip.title, trip.date, trip.notes)
-            }
-            createdTripId = tripId
+    private suspend fun saveTripToDatabase(trip: Trip, places: List<Place>) {
+        val tripId = repository.createTrip(trip.title, trip.date, trip.notes)
+        places.forEach { place -> repository.addPlaceToTrip(tripId, place.toEntity()) }
+    }
 
-            withContext(Dispatchers.IO) {
-                allSelectedPlaces.forEach { place ->
-                    repository.addPlaceToTrip(tripId, place.toEntity())
-                }
-
-                hiddenPlaceIds.keys.forEach { placeId ->
-                    repository.removePlaceFromTrip(tripId, placeId)
-                }
-            }
-            onComplete()
+    private fun saveTripAndGoToMain(trip: Trip, places: List<Place>, onComplete: () -> Unit = {}) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            saveTripToDatabase(trip, places)
+            withContext(Dispatchers.Main) { onComplete() }
         }
     }
 

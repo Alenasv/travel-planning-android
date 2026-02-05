@@ -69,10 +69,6 @@ fun TripEditScreen(
     val places = remember(currentTrip.places) {
         mutableStateListOf<Place>().apply { addAll(currentTrip.places) }
     }
-    val hiddenPlacesIds = remember { mutableStateListOf<String>() }
-    LaunchedEffect(hiddenPlacesIds) {
-        onHiddenPlacesChanged(hiddenPlacesIds.toList())
-    }
     var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
     var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date.ifEmpty { "" }) }
     var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
@@ -85,11 +81,6 @@ fun TripEditScreen(
         isTitleError = title.isEmpty()
 
         if (title.isNotEmpty()) {
-            hiddenPlacesIds.forEach { placeId ->
-                tripId?.let { id ->
-                    onRemovePlaceClick(id, placeId)
-                }
-            }
             val updatedTrip = Trip(
                 id = trip?.id ?: 0,
                 title = title,
@@ -103,18 +94,6 @@ fun TripEditScreen(
             showSaveError = true
         }
     }
-    LaunchedEffect(currentTrip.places) {
-        places.clear()
-        places.addAll(currentTrip.places)
-        hiddenPlacesIds.clear()
-    }
-    fun softRemovePlace(placeId: String) {
-        hiddenPlacesIds.add(placeId)
-        val index = places.indexOfFirst { it.id == placeId }
-        if (index != -1) {
-            places.removeAt(index)
-        }
-    }
 
     val currentTripToSend = Trip(
         id = trip?.id ?: 0,
@@ -124,9 +103,16 @@ fun TripEditScreen(
         notes = notes
     )
 
-    BackHandler() {
-        onBackClick(currentTripToSend)
+    BackHandler {
+        onBackClick(
+            trip!!.copy(
+                title = title,
+                date = date,
+                notes = notes
+            )
+        )
     }
+
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
         showAddFab = true
@@ -391,9 +377,9 @@ fun TripEditScreen(
                             PlaceListItem(
                                 place = place,
                                 onRemoveClick = {
-                                    softRemovePlace(place.id)
+                                    onRemovePlaceClick(tripId ?: 0, place.id)
                                 },
-                                onPlaceClick = { clickedPlace ->
+                                        onPlaceClick = { clickedPlace ->
                                     onPlaceClick(clickedPlace)
                                 },
                                 modifier = Modifier.fillMaxWidth()

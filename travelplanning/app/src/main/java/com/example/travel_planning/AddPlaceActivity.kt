@@ -24,6 +24,7 @@ class AddPlaceActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
     private var isNewTrip = false
+    var selectedCategory: String = "Все"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +98,7 @@ class AddPlaceActivity : ComponentActivity() {
                             else
                                 selectedPlacesIds.value - placeId
                         },
+                        selectedCategory = selectedCategory, onCategorySelected = { category -> selectedCategory = category },
                         onSaveTrip = { selectedPlaces ->
                             lifecycleScope.launch {
                                 val currentPlaces = withContext(Dispatchers.IO) {

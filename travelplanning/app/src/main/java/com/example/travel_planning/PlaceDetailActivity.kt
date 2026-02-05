@@ -15,14 +15,11 @@ class PlaceDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val tripId = intent.getLongExtra("TRIP_ID", -1)
-        if (tripId == -1L) finish()
-
         val placeId = intent.getStringExtra("PLACE_ID")
+        val isSelected = intent.getBooleanExtra("IS_SELECTED", false)
+
         val places: List<Place> = loadJsonListFromAssets(this, "all_places.json")
         val currentPlace = places.find { it.id == placeId }
-
-        val isSelected = intent.getBooleanExtra("IS_SELECTED", false)
 
         setContent {
             TravelPlanningTheme {
@@ -30,8 +27,11 @@ class PlaceDetailActivity : ComponentActivity() {
                     PlaceDetailScreen(
                         place = currentPlace,
                         isSelected = isSelected,
-                        onBackClick = { finish()
-                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)},
+                        onBackClick = {
+                            setResult(RESULT_CANCELED)
+                            finish()
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
+                        },
                         onAddToRoute = {
                             val resultIntent = Intent().apply {
                                 putExtra("PLACE_ID", placeId)
@@ -45,5 +45,11 @@ class PlaceDetailActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        setResult(RESULT_CANCELED)
+        overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
     }
 }

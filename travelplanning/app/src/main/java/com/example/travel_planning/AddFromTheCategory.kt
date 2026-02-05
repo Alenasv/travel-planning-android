@@ -10,30 +10,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.lifecycle.lifecycleScope
-import com.example.travel_planning.db.AppDatabase
-import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class AddFromTheCategory : ComponentActivity() {
-
-    private lateinit var repository: TripRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = AppDatabase.getDatabase(applicationContext)
-        repository = TripRepository(db)
         val allPlaces: List<Place> = loadJsonListFromAssets(this, "all_places.json")
+
+        val initialCategory = intent.getStringExtra("CATEGORY") ?: "Все"
 
         setContent {
             TravelPlanningTheme {
                 Surface {
                     var selectedPlaceIds by remember { mutableStateOf(setOf<String>()) }
+                    var selectedCategory by remember { mutableStateOf(initialCategory) }
 
                     val placeDetailLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.StartActivityForResult()
@@ -59,12 +52,14 @@ class AddFromTheCategory : ComponentActivity() {
                         onTogglePlace = { placeId, toggled ->
                             selectedPlaceIds = if (toggled) selectedPlaceIds + placeId else selectedPlaceIds - placeId
                         },
-                        onSaveTrip = {
+                        onSaveTrip = { selectedPlaces ->
                             val intent = Intent(this, EditTripFromCategory::class.java)
-                            intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(selectedPlaceIds))
+                            intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(selectedPlaces.map { it.id }))
                             startActivity(intent)
                             finish()
-                        }
+                        },
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = { category -> selectedCategory = category }
                     )
                 }
             }
