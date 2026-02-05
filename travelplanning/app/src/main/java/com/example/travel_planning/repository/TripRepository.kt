@@ -46,6 +46,20 @@ class TripRepository(private val db: AppDatabase) {
             tripDao.deleteTrip(it.trip)
         }
     }
+    suspend fun getNextDefaultTripName(): String {
+        val trips = getAllTrips()
+        val existingNumbers = trips.mapNotNull { trip ->
+            val regex = Regex("""^Новая поездка (\d+)$""")
+            regex.find(trip.name)?.groupValues?.get(1)?.toInt()
+        }.toSet()
+
+        var nextNumber = 1
+        while (existingNumbers.contains(nextNumber)) {
+            nextNumber++
+        }
+        return "Новая поездка $nextNumber"
+    }
+
 
 
     suspend fun getTripWithPlaces(tripId: Long) = tripDao.getTripWithPlaces(tripId)

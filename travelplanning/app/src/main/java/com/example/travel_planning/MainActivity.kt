@@ -78,21 +78,18 @@ class MainActivity : ComponentActivity() {
                         onAddTripClick = {
                             startActivity(Intent(this, AddTripActivity::class.java))
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                            finish()
                         },
                         onGalleryItemClick = { category ->
                             val intent = Intent(this, AddFromTheCategory::class.java)
                             intent.putExtra("CATEGORY", category)
                             startActivity(intent)
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                            finish()
                         },
                         onEditTripClick = { tripId ->
                             val intent = Intent(this, EditTripActivity::class.java)
                             intent.putExtra("TRIP_ID", tripId)
                             startActivity(intent)
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                            finish()
                         },
                         repository = repository,
                         tripsOverride = trips,

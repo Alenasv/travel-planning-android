@@ -61,21 +61,20 @@ fun TripEditScreen(
     onAddPlaceClick: (Trip) -> Unit,
     onRemovePlaceClick: (Long, String) -> Unit,
     onPlaceClick: (Place) -> Unit,
+    highlightTitleError: Boolean = false,
     onHiddenPlacesChanged: (List<String>) -> Unit = {}
 
 ) {
-    val currentTrip = trip ?: Trip()
+    val currentTrip = trip ?: Trip(id = 0, title = "", date = "", places = emptyList(), notes = "")
+    val places = remember(currentTrip.places) { mutableStateListOf<Place>().apply { addAll(currentTrip.places ?: emptyList()) } }
     val isEditing = trip != null
-    val places = remember(currentTrip.places) {
-        mutableStateListOf<Place>().apply { addAll(currentTrip.places) }
-    }
-    var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
-    var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date.ifEmpty { "" }) }
-    var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
-    var isTitleError by remember { mutableStateOf(false) }
-    var isTouched by remember { mutableStateOf(false) }
-    var showSaveError by remember { mutableStateOf(false) }
+    var title by remember(currentTrip) { mutableStateOf(currentTrip.title) }
+    var date by remember(currentTrip) { mutableStateOf(currentTrip.date.ifEmpty { "" }) }
+    var notes by remember(currentTrip) { mutableStateOf(currentTrip.notes) }
     var showAddFab by remember { mutableStateOf(false) }
+    var isTouched by remember { mutableStateOf(highlightTitleError) }
+    var isTitleError by remember { mutableStateOf(highlightTitleError) }
+    var showSaveError by remember { mutableStateOf(highlightTitleError) }
     val saveTrip = {
         isTouched = true
         isTitleError = title.isEmpty()
@@ -170,27 +169,14 @@ fun TripEditScreen(
                             }
 
                             IconButton(
-                                onClick = saveTrip,
-                                enabled = title.isNotEmpty()
+                                onClick = saveTrip
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         Icons.Default.Check,
                                         contentDescription = "Сохранить",
-                                        tint = if (title.isNotEmpty()) {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else {
-                                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-                                        }
+                                        tint = MaterialTheme.colorScheme.onPrimary
                                     )
-                                    if (showSaveError) {
-                                        Text(
-                                            text = "✗",
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.offset(y = (-4).dp)
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -216,31 +202,17 @@ fun TripEditScreen(
                         ) {
                             FloatingActionButton(
                                 onClick = {
-                                    if (title.isNotEmpty()) {
-                                        val updatedTrip = Trip(
-                                            id = trip?.id ?: 0,
-                                            title = title,
-                                            date = date,
-                                            places = places,
-                                            notes = notes
-                                        )
-                                        onAddPlaceClick(updatedTrip)
-                                    } else {
-                                        isTouched = true
-                                        isTitleError = true
-                                        showSaveError = true
-                                    }
+                                    val updatedTrip = Trip(
+                                        id = trip?.id ?: 0,
+                                        title = title,
+                                        date = date,
+                                        places = places,
+                                        notes = notes
+                                    )
+                                    onAddPlaceClick(updatedTrip)
                                 },
-                                containerColor = if (title.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                contentColor = if (title.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                }
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Добавить место")
                             }

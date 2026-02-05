@@ -53,12 +53,21 @@ class AddFromTheCategory : ComponentActivity() {
                             selectedPlaceIds = if (toggled) selectedPlaceIds + placeId else selectedPlaceIds - placeId
                         },
                         onSaveTrip = { selectedPlaces ->
-                            val intent = Intent(this, EditTripFromCategory::class.java)
-                            intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(selectedPlaces.map { it.id }))
-                            startActivity(intent)
-                            finish()
+
+                            if (selectedPlaces.isEmpty()) {
+                                finish()
+                            } else {
+                                val intent = Intent(this, EditTripFromCategory::class.java)
+                                intent.putStringArrayListExtra(
+                                    "SELECTED_PLACE_IDS",
+                                    ArrayList(selectedPlaces.map { it.id })
+                                )
+                                startActivity(intent)
+                                finish()
+                            }
                         },
-                        selectedCategory = selectedCategory,
+
+                                selectedCategory = selectedCategory,
                         onCategorySelected = { category -> selectedCategory = category }
                     )
                 }
