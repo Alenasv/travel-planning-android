@@ -39,7 +39,6 @@ class AddFromTheCategory : ComponentActivity() {
                     }
 
                     AddToRouteScreen(
-                        tripId = 0L,
                         selectedPlacesIds = selectedPlaceIds,
                         places = allPlaces,
                         onBackClick = { finish() },

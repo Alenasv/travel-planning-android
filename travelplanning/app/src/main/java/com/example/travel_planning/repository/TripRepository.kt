@@ -36,6 +36,17 @@ class TripRepository(private val db: AppDatabase) {
             false
         }
     }
+    suspend fun replaceTripPlaces(tripId: Long, places: List<PlaceEntity>) {
+        removeAllPlacesFromTrip(tripId)
+        places.forEach { addPlaceToTrip(tripId, it) }
+    }
+    suspend fun removeAllPlacesFromTrip(tripId: Long) {
+        val tripWithPlaces = getTripWithPlaces(tripId)
+        tripWithPlaces?.places?.forEach { placeEntity ->
+            tripDao.deleteCrossRef(tripId, placeEntity.id_)
+        }
+    }
+
     suspend fun deleteTripById(tripId: Long) {
         val tripWithPlaces = getTripWithPlaces(tripId)
         tripWithPlaces?.let {

@@ -17,6 +17,7 @@ class PlaceDetailActivity : ComponentActivity() {
 
         val placeId = intent.getStringExtra("PLACE_ID")
         val isSelected = intent.getBooleanExtra("IS_SELECTED", false)
+        val mode = intent.getStringExtra("MODE") ?: "VIEW"
 
         val places: List<Place> = loadJsonListFromAssets(this, "all_places.json")
         val currentPlace = places.find { it.id == placeId }
@@ -28,7 +29,9 @@ class PlaceDetailActivity : ComponentActivity() {
                         place = currentPlace,
                         isSelected = isSelected,
                         onBackClick = {
-                            setResult(RESULT_CANCELED)
+                            if (mode == "SELECTION") {
+                                setResult(RESULT_CANCELED)
+                            }
                             finish()
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
@@ -45,11 +48,5 @@ class PlaceDetailActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onBackPressed() {
-        super.onBackPressed()
-        setResult(RESULT_CANCELED)
-        overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
     }
 }

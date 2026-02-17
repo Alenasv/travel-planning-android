@@ -50,7 +50,6 @@ data class Place(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
-    tripId: Long,
     selectedPlacesIds: Set<String>,
     places: List<Place>,
     onBackClick: () -> Unit,
@@ -59,7 +58,8 @@ fun AddToRouteScreen(
     onTogglePlace: (String, Boolean) -> Unit,
     selectedCategory: String,
     onCategorySelected: (String) -> Unit
-) {
+)
+ {
     val allCategories = remember(places) {
         listOf("Все") + places.map { it.category }.distinct()
     }
@@ -722,7 +722,6 @@ fun PreviewAddToRouteScreen() {
             onBackClick = {},
             onSaveTrip = { selectedPlaces: List<Place> -> },
             onPlaceClick = { place, isSelected -> },
-            tripId = 1L,
             selectedPlacesIds = setOf("1", "3"),
             onTogglePlace = { placeId, toggled ->
                 selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId

@@ -3,7 +3,6 @@ package com.example.travel_planning
 import Place
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -28,25 +27,20 @@ class EditTripFromCategory : ComponentActivity() {
     private lateinit var repository: TripRepository
     private var selectedPlaceIds = listOf<String>()
     private val showUnsavedDialog = mutableStateOf(false)
-    private var currentTrip by mutableStateOf(Trip())
+    private var currentTrip by mutableStateOf(Trip(id = 0, title = "", date = "", notes = "", places = emptyList()))
     private val highlightTitleError = mutableStateOf(false)
 
-    private val hiddenPlaceIds = mutableStateListOf<String>()
+    private val visiblePlaces = mutableStateListOf<Place>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         selectedPlaceIds = intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: emptyList()
-
         repository = TripRepository(AppDatabase.getDatabase(applicationContext))
-  setContent {
-            val initialTrip = remember { mutableStateOf<Trip?>(null) }
 
+        setContent {
             TravelPlanningTheme {
                 Surface {
-                    val visiblePlaces = remember { mutableStateListOf<Place>() }
-
-
                     LaunchedEffect(Unit) {
                         val defaultName = repository.getNextDefaultTripName()
                         val allPlaces = loadJsonListFromAssets<Place>(this@EditTripFromCategory, "all_places.json")
@@ -55,13 +49,13 @@ class EditTripFromCategory : ComponentActivity() {
                         visiblePlaces.addAll(selectedPlaces)
 
                         currentTrip = Trip(
+                            id = 0,
                             title = defaultName,
                             date = "",
                             notes = "",
                             places = visiblePlaces.toList()
                         )
                     }
-
 
                     val placeDetailLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.StartActivityForResult()
@@ -70,8 +64,9 @@ class EditTripFromCategory : ComponentActivity() {
                             val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
                             val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
 
-                            if (!isSelected) visiblePlaces.removeAll { it.id == placeId }
-                            else {
+                            if (!isSelected) {
+                                visiblePlaces.removeAll { it.id == placeId }
+                            } else {
                                 val allPlaces = loadJsonListFromAssets<Place>(this@EditTripFromCategory, "all_places.json")
                                 val place = allPlaces.find { it.id == placeId }
                                 if (place != null && visiblePlaces.none { it.id == placeId }) visiblePlaces.add(place)
@@ -83,9 +78,12 @@ class EditTripFromCategory : ComponentActivity() {
 
                     TripEditScreen(
                         trip = currentTrip,
+                        isCreateMode = true,
+                        defaultTitle = currentTrip.title,
+                        showGeneratedTitle = false,
                         highlightTitleError = highlightTitleError.value,
                         onBackClick = { editedTrip ->
-                            handleBack(editedTrip, visiblePlaces)
+                            handleBack(editedTrip)
                         },
                         onSaveTrip = { tripToSave ->
                             saveTripAndGoToMain(tripToSave)
@@ -95,20 +93,18 @@ class EditTripFromCategory : ComponentActivity() {
                             intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(visiblePlaces.map { it.id }))
                             startActivity(intent)
                         },
-                        onRemovePlaceClick = { _, placeId ->
-
+                        onRemovePlaceClick = { placeId ->
                             visiblePlaces.removeAll { it.id == placeId }
                             currentTrip = currentTrip.copy(places = visiblePlaces.toList())
-
                         },
                         onPlaceClick = { place ->
                             val intent = Intent(this@EditTripFromCategory, PlaceDetailActivity::class.java)
                             intent.putExtra("PLACE_ID", place.id)
                             intent.putExtra("IS_SELECTED", visiblePlaces.any { it.id == place.id })
+                            intent.putExtra("MODE", "SELECTION")
                             placeDetailLauncher.launch(intent)
                         },
                         deleteTrip = {
-
                             intentToMainActivity()
                         }
                     )
@@ -128,13 +124,12 @@ class EditTripFromCategory : ComponentActivity() {
                             }
                         )
                     }
-
                 }
             }
         }
     }
 
-    private fun handleBack(editedTrip: Trip, visiblePlaces: List<Place>) {
+    private fun handleBack(editedTrip: Trip) {
         val isEmpty = editedTrip.title.isBlank() &&
                 editedTrip.date.isBlank() &&
                 editedTrip.notes.isBlank() &&
@@ -151,11 +146,7 @@ class EditTripFromCategory : ComponentActivity() {
 
     private fun saveTripAndGoToMain(trip: Trip) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val titleToSave = if (trip.title.isBlank()) {
-                repository.getNextDefaultTripName()
-            } else {
-                trip.title
-            }
+            val titleToSave = if (trip.title.isBlank()) repository.getNextDefaultTripName() else trip.title
 
             val tripId = repository.createTrip(titleToSave, trip.date, trip.notes)
             trip.places.forEach { repository.addPlaceToTrip(tripId, it.toEntity()) }
@@ -163,7 +154,6 @@ class EditTripFromCategory : ComponentActivity() {
             withContext(Dispatchers.Main) { intentToMainActivity() }
         }
     }
-
 
     private fun intentToMainActivity() {
         startActivity(Intent(this, MainActivity::class.java))
