@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.MainScreen
@@ -18,6 +19,7 @@ import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
 import com.example.travel_planning.view_model.MainViewModel
 import com.example.travel_planning.view_model.MainViewModelFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -68,6 +70,24 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    val activity = this@MainActivity
+
+                    val handleShare: (Long) -> Unit = { tripId ->
+                        lifecycleScope.launch {
+                            val text = viewModel.buildShareText(tripId) ?: return@launch
+
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                putExtra(Intent.EXTRA_TEXT, text)
+                                type = "text/plain"
+                            }
+
+                            startActivity(Intent.createChooser(intent, "Поделиться поездкой"))
+                        }
+                    }
+
+
+
+
 
                     MainScreen(
                         onAddTripClick = {
@@ -91,7 +111,7 @@ class MainActivity : ComponentActivity() {
                         onDeleteTrips = handleDelete,
                         onSelectionResetCallback = { callback ->
                             onSelectionReset = callback
-                        }
+                        }, onShareTripClick = handleShare
                     )
                 }
             }
