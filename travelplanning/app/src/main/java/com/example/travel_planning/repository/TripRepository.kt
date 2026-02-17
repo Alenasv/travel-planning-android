@@ -36,10 +36,12 @@ class TripRepository(private val db: AppDatabase) {
             false
         }
     }
+
     suspend fun replaceTripPlaces(tripId: Long, places: List<PlaceEntity>) {
         removeAllPlacesFromTrip(tripId)
         places.forEach { addPlaceToTrip(tripId, it) }
     }
+
     suspend fun removeAllPlacesFromTrip(tripId: Long) {
         val tripWithPlaces = getTripWithPlaces(tripId)
         tripWithPlaces?.places?.forEach { placeEntity ->
@@ -57,20 +59,15 @@ class TripRepository(private val db: AppDatabase) {
             tripDao.deleteTrip(it.trip)
         }
     }
+
     suspend fun getNextDefaultTripName(): String {
         val trips = getAllTrips()
-        val existingNumbers = trips.mapNotNull { trip ->
-            val regex = Regex("""^Новая поездка (\d+)$""")
+        val regex = Regex("""^Новая поездка (\d+)$""")
+        val maxNumber = trips.mapNotNull { trip ->
             regex.find(trip.name)?.groupValues?.get(1)?.toInt()
-        }.toSet()
-
-        var nextNumber = 1
-        while (existingNumbers.contains(nextNumber)) {
-            nextNumber++
-        }
-        return "Новая поездка $nextNumber"
+        }.maxOrNull() ?: 0
+        return "Новая поездка ${maxNumber + 1}"
     }
-
 
 
     suspend fun getTripWithPlaces(tripId: Long) = tripDao.getTripWithPlaces(tripId)
@@ -92,30 +89,30 @@ class TripRepository(private val db: AppDatabase) {
     suspend fun removePlaceFromTrip(tripId: Long, placeIdString: String) {
         val place = placeDao.getByPlaceId(placeIdString)
         place?.let { placeEntity ->
-            tripDao.deleteCrossRef(tripId,  placeEntity.id_)
-                placeDao.delete(placeEntity)
-            }
+            tripDao.deleteCrossRef(tripId, placeEntity.id_)
+            placeDao.delete(placeEntity)
         }
     }
-suspend fun TripRepository.getTripForUI(tripId: Long): Trip? {
-    return getTripWithPlaces(tripId)?.let { tripWithPlaces ->
-        Trip(
-            id = tripWithPlaces.trip.id_,
-            title = tripWithPlaces.trip.name,
-            date = tripWithPlaces.trip.date ?: "",
-            notes = tripWithPlaces.trip.notes ?: "",
-            places = tripWithPlaces.places.map { placeEntity ->
-                Place(
-                    id = placeEntity.place_id,
-                    name = placeEntity.name,
-                    address = placeEntity.address,
-                    work_time = placeEntity.work_time ?: "",
-                    category = placeEntity.category,
-                    description = placeEntity.description ?: "",
-                    image_filename = placeEntity.imageFilename ?: ""
-                )
-            }
-        )
+
+    suspend fun getTripForUI(tripId: Long): Trip? {
+        return getTripWithPlaces(tripId)?.let { tripWithPlaces ->
+            Trip(
+                id = tripWithPlaces.trip.id_,
+                title = tripWithPlaces.trip.name,
+                date = tripWithPlaces.trip.date ?: "",
+                notes = tripWithPlaces.trip.notes ?: "",
+                places = tripWithPlaces.places.map { placeEntity ->
+                    Place(
+                        id = placeEntity.place_id,
+                        name = placeEntity.name,
+                        address = placeEntity.address,
+                        work_time = placeEntity.work_time ?: "",
+                        category = placeEntity.category,
+                        description = placeEntity.description ?: "",
+                        image_filename = placeEntity.imageFilename ?: ""
+                    )
+                }
+            )
+        }
     }
 }
-

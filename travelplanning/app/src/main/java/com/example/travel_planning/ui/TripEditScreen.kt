@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import com.example.travel_planning.utils.AnimatedFAB
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberDateRangePickerState
-import com.example.travel_planning.repository.TripRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,6 +45,7 @@ data class Trip(
     val places: List<Place> = emptyList(),
     val notes: String = ""
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripEditScreen(
@@ -55,6 +55,9 @@ fun TripEditScreen(
     defaultTitle: String,
     showGeneratedTitle: Boolean,
     onSaveTrip: (Trip) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onDateChange: (String) -> Unit,
+    onNotesChange: (String) -> Unit,
     deleteTrip: () -> Unit,
     onAddPlaceClick: (Trip) -> Unit,
     onRemovePlaceClick: (String) -> Unit,
@@ -68,9 +71,9 @@ fun TripEditScreen(
     var notes by remember(trip.id) { mutableStateOf(trip.notes) }
 
     LaunchedEffect(trip.title, trip.date, trip.notes) {
-        title = trip.title
-        date = trip.date
-        notes = trip.notes
+        if (title != trip.title) title = trip.title
+        if (date != trip.date) date = trip.date
+        if (notes != trip.notes) notes = trip.notes
     }
 
     var showAddFab by remember { mutableStateOf(false) }
@@ -140,7 +143,7 @@ fun TripEditScreen(
                         Row {
                             if (isEditing) {
                                 IconButton(
-                                    onClick = { deleteTrip() },
+                                    onClick = deleteTrip,
                                     enabled = title.isNotEmpty()
                                 ) {
                                     Icon(
@@ -230,10 +233,12 @@ fun TripEditScreen(
 
                 OutlinedTextField(
                     value = title,
-                    onValueChange = {
-                        title = it
+                    onValueChange = { newTitle ->
+                        title = newTitle
+                        onTitleChange(newTitle)
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    isError = highlightTitleError,
                     placeholder = {
                         Text(
                             when {
@@ -249,16 +254,21 @@ fun TripEditScreen(
                         )
                     },
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor =
-                        MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor =
-                        MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     supportingText = {
-                        Text(
-                            text = "Название будет отображаться в списке поездок",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (highlightTitleError) {
+                            Text(
+                                text = "Введите название поездки",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(
+                                text = "Название будет отображаться в списке поездок",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp)
@@ -325,6 +335,7 @@ fun TripEditScreen(
                     selectedDate = date,
                     onDateSelected = { selectedDate ->
                         date = selectedDate
+                        onDateChange(selectedDate)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -337,7 +348,10 @@ fun TripEditScreen(
 
                 OutlinedTextField(
                     value = notes,
-                    onValueChange = { notes = it },
+                    onValueChange = { newNotes ->
+                        notes = newNotes
+                        onNotesChange(newNotes)
+                    },
                     label = { Text("Ваши заметки...") },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -406,6 +420,7 @@ fun PlaceListItem(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerButtonWithBottomSheet(
@@ -657,12 +672,18 @@ fun TripEditScreenPreview() {
         TripEditScreen(
             trip = Trip(),
             onBackClick = {},
+            isCreateMode = false,
+            defaultTitle = "",
+            showGeneratedTitle = false,
             onSaveTrip = {},
+            onTitleChange = {},
+            onDateChange = {},
+            onNotesChange = {},
+            deleteTrip = {},
             onAddPlaceClick = {},
             onRemovePlaceClick = {},
             onPlaceClick = {},
-            deleteTrip = {},
-            defaultTitle = "", isCreateMode = false, showGeneratedTitle = false
+            highlightTitleError = false
         )
     }
 }

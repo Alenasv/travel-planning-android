@@ -9,28 +9,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
-import com.example.travel_planning.ui.Trip
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromAssets
-import com.example.travel_planning.utils.toEntity
-import kotlinx.coroutines.Dispatchers
+import com.example.travel_planning.view_model.TripEditViewModel
+import com.example.travel_planning.view_model.TripEditViewModelFactory
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class EditTripFromCategory : ComponentActivity() {
 
     private lateinit var repository: TripRepository
+    private lateinit var viewModel: TripEditViewModel
     private var selectedPlaceIds = listOf<String>()
     private val showUnsavedDialog = mutableStateOf(false)
-    private var currentTrip by mutableStateOf(Trip(id = 0, title = "", date = "", notes = "", places = emptyList()))
-    private val highlightTitleError = mutableStateOf(false)
-
-    private val visiblePlaces = mutableStateListOf<Place>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,69 +35,96 @@ class EditTripFromCategory : ComponentActivity() {
         selectedPlaceIds = intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: emptyList()
         repository = TripRepository(AppDatabase.getDatabase(applicationContext))
 
+        viewModel = ViewModelProvider(
+            this,
+            TripEditViewModelFactory(repository)
+        )[TripEditViewModel::class.java]
+
+        lifecycleScope.launch {
+            val allPlaces = loadJsonListFromAssets<Place>(
+                this@EditTripFromCategory,
+                "all_places.json"
+            )
+            val selectedPlaces = allPlaces.filter { it.id in selectedPlaceIds }
+            viewModel.initFromSelectedPlaces(selectedPlaceIds, selectedPlaces)
+        }
+
         setContent {
             TravelPlanningTheme {
                 Surface {
-                    LaunchedEffect(Unit) {
-                        val defaultName = repository.getNextDefaultTripName()
-                        val allPlaces = loadJsonListFromAssets<Place>(this@EditTripFromCategory, "all_places.json")
-                        val selectedPlaces = allPlaces.filter { it.id in selectedPlaceIds }
-                        visiblePlaces.clear()
-                        visiblePlaces.addAll(selectedPlaces)
-
-                        currentTrip = Trip(
-                            id = 0,
-                            title = defaultName,
-                            date = "",
-                            notes = "",
-                            places = visiblePlaces.toList()
-                        )
-                    }
+                    val trip by viewModel.tripState.collectAsStateWithLifecycle()
+                    val defaultTitle by viewModel.defaultTitle.collectAsStateWithLifecycle()
+                    val highlightTitleError by viewModel.highlightTitleError.collectAsStateWithLifecycle()
 
                     val placeDetailLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         if (result.resultCode == RESULT_OK && result.data != null) {
-                            val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
+                            val placeId = result.data!!.getStringExtra("PLACE_ID")
+                                ?: return@rememberLauncherForActivityResult
                             val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
 
                             if (!isSelected) {
-                                visiblePlaces.removeAll { it.id == placeId }
+                                viewModel.removePlace(placeId)
                             } else {
-                                val allPlaces = loadJsonListFromAssets<Place>(this@EditTripFromCategory, "all_places.json")
+                                val allPlaces = loadJsonListFromAssets<Place>(
+                                    this@EditTripFromCategory,
+                                    "all_places.json"
+                                )
                                 val place = allPlaces.find { it.id == placeId }
-                                if (place != null && visiblePlaces.none { it.id == placeId }) visiblePlaces.add(place)
+                                if (place != null) {
+                                    viewModel.addPlace(place)
+                                }
                             }
-
-                            currentTrip = currentTrip.copy(places = visiblePlaces.toList())
                         }
                     }
 
                     TripEditScreen(
-                        trip = currentTrip,
+                        trip = trip,
                         isCreateMode = true,
-                        defaultTitle = currentTrip.title,
+                        defaultTitle = defaultTitle,
                         showGeneratedTitle = false,
-                        highlightTitleError = highlightTitleError.value,
-                        onBackClick = { editedTrip ->
-                            handleBack(editedTrip)
+                        highlightTitleError = highlightTitleError,
+                        onTitleChange = { viewModel.updateTripTitle(it) },
+                        onDateChange = { viewModel.updateTripDate(it) },
+                        onNotesChange = { viewModel.updateTripNotes(it) },
+                        onBackClick = {
+                            if (!viewModel.isEmpty() && viewModel.hasChanges()) {
+                                showUnsavedDialog.value = true
+                            } else {
+                                intentToMainActivity()
+                            }
                         },
-                        onSaveTrip = { tripToSave ->
-                            saveTripAndGoToMain(tripToSave)
+                        onSaveTrip = {
+                            if (!viewModel.validateTitle()) {
+                                return@TripEditScreen
+                            }
+                            saveTripAndGoToMain()
                         },
                         onAddPlaceClick = {
-                            val intent = Intent(this@EditTripFromCategory, AddPlaceActivity::class.java)
-                            intent.putStringArrayListExtra("SELECTED_PLACE_IDS", ArrayList(visiblePlaces.map { it.id }))
+                            val intent = Intent(
+                                this@EditTripFromCategory,
+                                AddPlaceActivity::class.java
+                            )
+                            intent.putStringArrayListExtra(
+                                "SELECTED_PLACE_IDS",
+                                ArrayList(trip.places.map { it.id })
+                            )
                             startActivity(intent)
                         },
                         onRemovePlaceClick = { placeId ->
-                            visiblePlaces.removeAll { it.id == placeId }
-                            currentTrip = currentTrip.copy(places = visiblePlaces.toList())
+                            viewModel.removePlace(placeId)
                         },
                         onPlaceClick = { place ->
-                            val intent = Intent(this@EditTripFromCategory, PlaceDetailActivity::class.java)
+                            val intent = Intent(
+                                this@EditTripFromCategory,
+                                PlaceDetailActivity::class.java
+                            )
                             intent.putExtra("PLACE_ID", place.id)
-                            intent.putExtra("IS_SELECTED", visiblePlaces.any { it.id == place.id })
+                            intent.putExtra(
+                                "IS_SELECTED",
+                                trip.places.any { it.id == place.id }
+                            )
                             intent.putExtra("MODE", "SELECTION")
                             placeDetailLauncher.launch(intent)
                         },
@@ -113,7 +137,7 @@ class EditTripFromCategory : ComponentActivity() {
                         UnsavedTripDialog(
                             onSave = {
                                 showUnsavedDialog.value = false
-                                saveTripAndGoToMain(currentTrip)
+                                saveTripAndGoToMain()
                             },
                             onDelete = {
                                 showUnsavedDialog.value = false
@@ -129,29 +153,10 @@ class EditTripFromCategory : ComponentActivity() {
         }
     }
 
-    private fun handleBack(editedTrip: Trip) {
-        val isEmpty = editedTrip.title.isBlank() &&
-                editedTrip.date.isBlank() &&
-                editedTrip.notes.isBlank() &&
-                visiblePlaces.isEmpty()
-
-        val hasChanges = editedTrip.title.isNotBlank() ||
-                editedTrip.date.isNotBlank() ||
-                editedTrip.notes.isNotBlank() ||
-                visiblePlaces.isNotEmpty()
-
-        if (isEmpty || !hasChanges) intentToMainActivity()
-        else showUnsavedDialog.value = true
-    }
-
-    private fun saveTripAndGoToMain(trip: Trip) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val titleToSave = if (trip.title.isBlank()) repository.getNextDefaultTripName() else trip.title
-
-            val tripId = repository.createTrip(titleToSave, trip.date, trip.notes)
-            trip.places.forEach { repository.addPlaceToTrip(tripId, it.toEntity()) }
-
-            withContext(Dispatchers.Main) { intentToMainActivity() }
+    private fun saveTripAndGoToMain() {
+        lifecycleScope.launch {
+            viewModel.saveCreate()
+            intentToMainActivity()
         }
     }
 

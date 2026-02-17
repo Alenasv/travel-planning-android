@@ -9,17 +9,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.MainScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
-import kotlinx.coroutines.launch
+import com.example.travel_planning.view_model.MainViewModel
+import com.example.travel_planning.view_model.MainViewModelFactory
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var repository: TripRepository
+    private lateinit var viewModel: MainViewModel
     private var onSelectionReset: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,24 +31,24 @@ class MainActivity : ComponentActivity() {
         val db = AppDatabase.getDatabase(applicationContext)
         repository = TripRepository(db)
 
+        viewModel = ViewModelProvider(
+            this,
+            MainViewModelFactory(repository)
+        )[MainViewModel::class.java]
+
         setContent {
             TravelPlanningTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
-                    var trips by remember { mutableStateOf(listOf<com.example.travel_planning.db.entities.TripEntity>()) }
-                    var showDeleteDialog by remember { mutableStateOf(false) }
-                    var pendingDeleteTrips by remember { mutableStateOf(listOf<Long>()) }
-
-                    LaunchedEffect(Unit) {
-                        trips = repository.getAllTrips()
-                    }
+                    val trips by viewModel.trips.collectAsStateWithLifecycle()
+                    val showDeleteDialog by viewModel.showDeleteDialog.collectAsStateWithLifecycle()
+                    val pendingDeleteTrips by viewModel.pendingDeleteIds.collectAsStateWithLifecycle()
+                    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
                     val handleDelete: (List<Long>) -> Unit = { ids ->
-                        pendingDeleteTrips = ids
-                        showDeleteDialog = true
+                        viewModel.requestDeleteTrips(ids)
                     }
 
                     val onResetSelection: () -> Unit = {
@@ -56,19 +59,11 @@ class MainActivity : ComponentActivity() {
                         DeleteConfirmationDialog(
                             title = "Удалить выбранные записи?",
                             onConfirm = {
-                                showDeleteDialog = false
-                                lifecycleScope.launch {
-                                    pendingDeleteTrips.forEach { id ->
-                                        repository.deleteTripById(id)
-                                    }
-                                    trips = repository.getAllTrips()
-                                    pendingDeleteTrips = emptyList()
-                                    onResetSelection()
-                                }
+                                viewModel.confirmDelete()
+                                onResetSelection()
                             },
                             onDismiss = {
-                                showDeleteDialog = false
-                                pendingDeleteTrips = emptyList()
+                                viewModel.dismissDeleteDialog()
                                 onResetSelection()
                             }
                         )

@@ -56,7 +56,7 @@ class AddPlaceActivity : ComponentActivity() {
                             val resultIntent = Intent().apply {
                                 putStringArrayListExtra(
                                     "SELECTED_PLACE_IDS",
-                                    ArrayList(selectedPlacesIds.value)
+                                    ArrayList(initiallySelectedIds)
                                 )
                             }
                             setResult(RESULT_OK, resultIntent)
