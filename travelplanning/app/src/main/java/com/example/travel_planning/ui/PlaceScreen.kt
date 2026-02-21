@@ -36,6 +36,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import java.io.File
 
 data class Place(
     val id: String,
@@ -584,9 +585,15 @@ fun PlaceCard(
         targetValue = if (isSelected) 0.98f else 1f,
         animationSpec = tween(durationMillis = 150)
     )
-
     val elevation = if (isSelected) 12.dp else 6.dp
+    val context = LocalContext.current
+    val imageFile = File(context.filesDir, place.image_filename)
 
+    val imageModel = if (imageFile.exists()) {
+        imageFile
+    } else {
+        "http://45.150.11.208:8000/static/${place.image_filename}"
+    }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -607,7 +614,7 @@ fun PlaceCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = "file:///android_asset/${place.image_filename}",
+                    model = imageModel,
                     contentDescription = place.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

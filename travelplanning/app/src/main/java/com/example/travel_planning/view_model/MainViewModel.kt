@@ -6,41 +6,33 @@ import androidx.lifecycle.viewModelScope
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import java.net.URLEncoder
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val repository: TripRepository
 ) : ViewModel() {
 
-    private val _trips = MutableStateFlow<List<TripEntity>>(emptyList())
-    val trips: StateFlow<List<TripEntity>> = _trips.asStateFlow()
+    val trips: StateFlow<List<TripEntity>> =
+        repository.getAllTrips()
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _pendingDeleteIds = MutableStateFlow<List<Long>>(emptyList())
-    val pendingDeleteIds: StateFlow<List<Long>> = _pendingDeleteIds.asStateFlow()
+    val pendingDeleteIds: StateFlow<List<Long>> = _pendingDeleteIds
 
     private val _showDeleteDialog = MutableStateFlow(false)
-    val showDeleteDialog: StateFlow<Boolean> = _showDeleteDialog.asStateFlow()
-
-    init {
-        loadTrips()
-    }
-
-    fun loadTrips() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                _trips.value = repository.getAllTrips()
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
+    val showDeleteDialog: StateFlow<Boolean> = _showDeleteDialog
 
     fun requestDeleteTrips(ids: List<Long>) {
         _pendingDeleteIds.value = ids
@@ -49,16 +41,10 @@ class MainViewModel(
 
     fun confirmDelete() {
         viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                _pendingDeleteIds.value.forEach { id ->
-                    repository.deleteTripById(id)
-                }
-                loadTrips()
-                cancelDelete()
-            } finally {
-                _isLoading.value = false
+            _pendingDeleteIds.value.forEach { id ->
+                repository.deleteTripById(id)
             }
+            cancelDelete()
         }
     }
 
@@ -70,8 +56,9 @@ class MainViewModel(
     fun dismissDeleteDialog() {
         _showDeleteDialog.value = false
     }
+
     suspend fun buildShareText(tripId: Long): String? {
-        val trip = _trips.value.find { it.id_ == tripId } ?: return null
+        val trip = trips.value.find { it.id_ == tripId } ?: return null
         val tripUI = repository.getTripForUI(tripId) ?: return null
 
         return buildString {
@@ -80,12 +67,13 @@ class MainViewModel(
             appendLine()
             appendLine("Места:")
             appendLine()
+
             tripUI.places.forEachIndexed { index, place ->
                 appendLine("${index + 1}. ${place.name}")
                 appendLine("   Адрес: ${place.address}")
                 appendLine()
                 val encoded = URLEncoder.encode(place.address, "UTF-8")
-                appendLine("    [Яндекс.Карты] (https://yandex.ru/maps/?text=$encoded)")
+                appendLine("   https://yandex.ru/maps/?text=$encoded")
                 appendLine()
             }
 

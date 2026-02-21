@@ -12,6 +12,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
+import com.example.travel_planning.utils.loadJsonListFromInternal
 
 class AddPlaceActivity : ComponentActivity() {
 
@@ -24,7 +25,7 @@ class AddPlaceActivity : ComponentActivity() {
             intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: arrayListOf()
 
         val allPlaces: List<Place> =
-            loadJsonListFromAssets(this, "all_places.json")
+            loadJsonListFromInternal(this, "all_places.json")
 
         setContent {
             TravelPlanningTheme {

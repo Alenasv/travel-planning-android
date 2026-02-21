@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.db.AppDatabase
+import com.example.travel_planning.network.downloadJson
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.MainScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
@@ -44,11 +45,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val trips by viewModel.trips.collectAsStateWithLifecycle()
                     val showDeleteDialog by viewModel.showDeleteDialog.collectAsStateWithLifecycle()
-                    val pendingDeleteTrips by viewModel.pendingDeleteIds.collectAsStateWithLifecycle()
-                    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+                    var allPlacesLoaded by remember { mutableStateOf(false) }
+                    val trips by viewModel.trips.collectAsStateWithLifecycle()
 
+                    val isScreenReady = trips.isNotEmpty() && allPlacesLoaded
+                    LaunchedEffect(Unit) {
+                        downloadJson(applicationContext, "all_places.json")
+                        allPlacesLoaded = true
+                    }
                     val handleDelete: (List<Long>) -> Unit = { ids ->
                         viewModel.requestDeleteTrips(ids)
                     }
@@ -70,7 +75,6 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    val activity = this@MainActivity
 
                     val handleShare: (Long) -> Unit = { tripId ->
                         lifecycleScope.launch {
@@ -84,10 +88,6 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent.createChooser(intent, "Поделиться поездкой"))
                         }
                     }
-
-
-
-
 
                     MainScreen(
                         onAddTripClick = {

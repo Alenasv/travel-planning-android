@@ -19,10 +19,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import java.io.File
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +48,7 @@ fun PlaceDetailScreen(
         kotlinx.coroutines.delay(300)
         showEnterAnimation = true
     }
-
+    val context = LocalContext.current
     BackHandler() {
         onBackClick()
     }
@@ -70,6 +73,14 @@ fun PlaceDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (place != null) {
+                val context = LocalContext.current
+                val imageFile = File(context.filesDir, place.image_filename)
+
+                val imageModel = if (imageFile.exists()) {
+                    imageFile
+                } else {
+                    "http://45.150.11.208:8000/static/${place.image_filename}"
+                }
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(bottom = 80.dp),
@@ -78,11 +89,9 @@ fun PlaceDetailScreen(
                         .padding(paddingValues)
                 ) {
                     item {
-                        val painter = rememberAsyncImagePainter(
-                            model = "file:///android_asset/${place.image_filename}"
-                        )
-                        Image(
-                            painter = painter,
+
+                        AsyncImage(
+                            model = imageModel,
                             contentDescription = place.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier

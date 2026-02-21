@@ -18,6 +18,7 @@ import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromAssets
+import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
 import com.example.travel_planning.view_model.TripEditViewModelFactory
 import kotlinx.coroutines.launch
@@ -38,7 +39,8 @@ class EditTripActivity : ComponentActivity() {
             val selectedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
                 ?: return@registerForActivityResult
 
-            val allPlaces = loadJsonListFromAssets<Place>(this, "all_places.json")
+            val allPlaces: List<Place> =
+                loadJsonListFromInternal(this, "all_places.json")
             val updatedPlaces = allPlaces.filter { it.id in selectedIds }
             viewModel.setPlaces(updatedPlaces)
         }

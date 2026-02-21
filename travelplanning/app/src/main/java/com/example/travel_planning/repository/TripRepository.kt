@@ -5,6 +5,8 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.db.entities.*
 import com.example.travel_planning.ui.Trip
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class TripRepository(private val db: AppDatabase) {
@@ -17,7 +19,7 @@ class TripRepository(private val db: AppDatabase) {
         return tripDao.insertTrip(trip)
     }
 
-    suspend fun getAllTrips(): List<TripEntity> {
+    fun getAllTrips(): Flow<List<TripEntity>> {
         return tripDao.getAllTrips()
     }
 
@@ -61,14 +63,13 @@ class TripRepository(private val db: AppDatabase) {
     }
 
     suspend fun getNextDefaultTripName(): String {
-        val trips = getAllTrips()
+        val trips = getAllTrips().first()
         val regex = Regex("""^Новая поездка (\d+)$""")
         val maxNumber = trips.mapNotNull { trip ->
             regex.find(trip.name)?.groupValues?.get(1)?.toInt()
         }.maxOrNull() ?: 0
         return "Новая поездка ${maxNumber + 1}"
     }
-
 
     suspend fun getTripWithPlaces(tripId: Long) = tripDao.getTripWithPlaces(tripId)
 
@@ -84,14 +85,6 @@ class TripRepository(private val db: AppDatabase) {
         tripDao.insertCrossRef(
             TripPlaceCrossRef(tripId = tripId, placeId = placeEntity.id_)
         )
-    }
-
-    suspend fun removePlaceFromTrip(tripId: Long, placeIdString: String) {
-        val place = placeDao.getByPlaceId(placeIdString)
-        place?.let { placeEntity ->
-            tripDao.deleteCrossRef(tripId, placeEntity.id_)
-            placeDao.delete(placeEntity)
-        }
     }
 
     suspend fun getTripForUI(tripId: Long): Trip? {

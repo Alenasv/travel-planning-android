@@ -91,6 +91,9 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import com.example.travel_planning.network.downloadJson
+import com.example.travel_planning.utils.loadJsonListFromInternal
+import java.io.File
 
 data class ListItem(
     val id: Int,
@@ -116,7 +119,11 @@ fun MainScreen(
     onSelectionResetCallback: ((() -> Unit) -> Unit)? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    var trips by remember { mutableStateOf(tripsOverride ?: emptyList<TripEntity>()) }
+
+    val trips: List<TripEntity> = repository?.getAllTrips()
+        ?.collectAsState(initial = emptyList())
+        ?.value ?: tripsOverride ?: emptyList()
+
     var isLoading by remember { mutableStateOf(true) }
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedTrips = remember { mutableStateListOf<Long>() }
@@ -137,7 +144,6 @@ fun MainScreen(
 
     LaunchedEffect(tripsOverride) {
         tripsOverride?.let {
-            trips = it
             isLoading = false
         }
     }
@@ -146,10 +152,10 @@ fun MainScreen(
         if (tripsOverride == null) {
             try {
                 repository?.let {
-                    trips = it.getAllTrips()
+                   // trips = it.getAllTrips()
                 }
             } catch (e: Exception) {
-                trips = emptyList()
+              //  trips = emptyList()
             } finally {
                 isLoading = false
             }
@@ -167,10 +173,10 @@ fun MainScreen(
                 lifecycleOwner.lifecycleScope.launch {
                     try {
                         repository?.let {
-                            trips = it.getAllTrips()
+                           // trips = it.getAllTrips()
                         }
                     } catch (e: Exception) {
-                        trips = emptyList()
+                       // trips = emptyList()
                     }
                 }
             }
@@ -185,9 +191,15 @@ fun MainScreen(
     val handleDeleteClick: () -> Unit = {
         onDeleteTrips(selectedTrips.toList())
     }
-
-    val allPlaces: List<Place> = remember {
-        loadJsonListFromAssets(context, "all_places.json")
+    var allPlaces by remember { mutableStateOf<List<Place>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        val success = downloadJson(context, "all_places.json")
+        allPlaces = if (success) {
+            loadJsonListFromInternal(context, "all_places.json")
+        } else {
+            loadJsonListFromAssets(context, "all_places.json")//убрать
+        }
+        isLoading = false
     }
 
     val galleryItems = remember(allPlaces) {
@@ -328,17 +340,18 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
-                }
+
             }
+        }
+
         }
     }
 }
-
 @Composable
-fun GalleryCard(
-    item: GalleryItem,
-    onClick: () -> Unit
-) {
+fun GalleryCard(item: GalleryItem, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val localFile = File(context.filesDir, item.imagePath)
+
     Card(
         onClick = onClick,
         modifier = Modifier.size(200.dp),
@@ -347,7 +360,7 @@ fun GalleryCard(
     ) {
         Box {
             AsyncImage(
-                model = "file:///android_asset/${item.imagePath}",
+                model = if (localFile.exists()) localFile else "http://45.150.11.208:8000/static/${item.imagePath}",
                 contentDescription = item.category,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
