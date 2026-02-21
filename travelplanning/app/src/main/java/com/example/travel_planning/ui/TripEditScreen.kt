@@ -19,8 +19,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.utils.AnimatedFAB
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberDateRangePickerState
@@ -41,7 +38,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-
 data class Trip(
     val id: Long = 0,
     val title: String = "",
@@ -49,88 +45,68 @@ data class Trip(
     val places: List<Place> = emptyList(),
     val notes: String = ""
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripEditScreen(
-    trip: Trip? = null,
-    tripId: Long? = null,
-    repository: TripRepository?=null,
+    trip: Trip,
     onBackClick: (Trip) -> Unit,
+    isCreateMode: Boolean,
+    defaultTitle: String,
+    showGeneratedTitle: Boolean,
     onSaveTrip: (Trip) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onDateChange: (String) -> Unit,
+    onNotesChange: (String) -> Unit,
     deleteTrip: () -> Unit,
     onAddPlaceClick: (Trip) -> Unit,
-    onRemovePlaceClick: (Long, String) -> Unit,
+    onRemovePlaceClick: (String) -> Unit,
     onPlaceClick: (Place) -> Unit,
-    onHiddenPlacesChanged: (List<String>) -> Unit = {}
-
+    highlightTitleError: Boolean = false
 ) {
-    val currentTrip = trip ?: Trip()
-    val isEditing = trip != null
-    val places = remember(currentTrip.places) {
-        mutableStateListOf<Place>().apply { addAll(currentTrip.places) }
-    }
-    val hiddenPlacesIds = remember { mutableStateListOf<String>() }
-    LaunchedEffect(hiddenPlacesIds) {
-        onHiddenPlacesChanged(hiddenPlacesIds.toList())
-    }
-    var title by remember(currentTrip.title) { mutableStateOf(currentTrip.title) }
-    var date by remember(currentTrip.date) { mutableStateOf(currentTrip.date.ifEmpty { "" }) }
-    var notes by remember(currentTrip.notes) { mutableStateOf(currentTrip.notes) }
-    var isTitleError by remember { mutableStateOf(false) }
-    var isTouched by remember { mutableStateOf(false) }
-    var showSaveError by remember { mutableStateOf(false) }
-    var showAddFab by remember { mutableStateOf(false) }
-    val saveTrip = {
-        isTouched = true
-        isTitleError = title.isEmpty()
+    val isEditing = trip.id != 0L
 
-        if (title.isNotEmpty()) {
-            hiddenPlacesIds.forEach { placeId ->
-                tripId?.let { id ->
-                    onRemovePlaceClick(id, placeId)
-                }
-            }
-            val updatedTrip = Trip(
-                id = trip?.id ?: 0,
-                title = title,
-                date = date,
-                places = places,
-                notes = notes
-            )
-            onSaveTrip(updatedTrip)
-            showSaveError = false
-        } else {
-            showSaveError = true
-        }
+    var title by remember(trip.id) { mutableStateOf(trip.title) }
+    var date by remember(trip.id) { mutableStateOf(trip.date) }
+    var notes by remember(trip.id) { mutableStateOf(trip.notes) }
+
+    LaunchedEffect(trip.title, trip.date, trip.notes) {
+        if (title != trip.title) title = trip.title
+        if (date != trip.date) date = trip.date
+        if (notes != trip.notes) notes = trip.notes
     }
-    LaunchedEffect(currentTrip.places) {
-        places.clear()
-        places.addAll(currentTrip.places)
-        hiddenPlacesIds.clear()
-    }
-    fun softRemovePlace(placeId: String) {
-        hiddenPlacesIds.add(placeId)
-        val index = places.indexOfFirst { it.id == placeId }
-        if (index != -1) {
-            places.removeAt(index)
-        }
+
+    var showAddFab by remember { mutableStateOf(false) }
+    var isTouched by remember { mutableStateOf(highlightTitleError) }
+
+    val saveTrip = {
+        val updatedTrip = Trip(
+            id = trip.id,
+            title = title,
+            date = date,
+            places = trip.places.toList(),
+            notes = notes
+        )
+        onSaveTrip(updatedTrip)
     }
 
     val currentTripToSend = Trip(
-        id = trip?.id ?: 0,
+        id = trip.id,
         title = title,
         date = date,
-        places = places,
+        places = trip.places.toList(),
         notes = notes
     )
 
-    BackHandler() {
+    BackHandler {
         onBackClick(currentTripToSend)
     }
+
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
         showAddFab = true
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -156,7 +132,6 @@ fun TripEditScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = { onBackClick(currentTripToSend) }) {
-
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = "Назад",
@@ -168,7 +143,7 @@ fun TripEditScreen(
                         Row {
                             if (isEditing) {
                                 IconButton(
-                                    onClick = { deleteTrip() },
+                                    onClick = deleteTrip,
                                     enabled = title.isNotEmpty()
                                 ) {
                                     Icon(
@@ -184,27 +159,14 @@ fun TripEditScreen(
                             }
 
                             IconButton(
-                                onClick = saveTrip,
-                                enabled = title.isNotEmpty()
+                                onClick = saveTrip
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         Icons.Default.Check,
                                         contentDescription = "Сохранить",
-                                        tint = if (title.isNotEmpty()) {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else {
-                                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
-                                        }
+                                        tint = MaterialTheme.colorScheme.onPrimary
                                     )
-                                    if (showSaveError) {
-                                        Text(
-                                            text = "✗",
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.offset(y = (-4).dp)
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -219,26 +181,7 @@ fun TripEditScreen(
                                 containerColor = MaterialTheme.colorScheme.errorContainer
                             ),
                             modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = "Информация",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Сначала введите название",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    maxLines = 2
-                                )
-                            }
-                        }
+                        ) {}
                     }
                     Box(
                         modifier = Modifier.fillMaxSize()
@@ -249,37 +192,22 @@ fun TripEditScreen(
                         ) {
                             FloatingActionButton(
                                 onClick = {
-                                    if (title.isNotEmpty()) {
-                                        val updatedTrip = Trip(
-                                            id = trip?.id ?: 0,
-                                            title = title,
-                                            date = date,
-                                            places = places,
-                                            notes = notes
-                                        )
-                                        onAddPlaceClick(updatedTrip)
-                                    } else {
-                                        isTouched = true
-                                        isTitleError = true
-                                        showSaveError = true
-                                    }
+                                    val updatedTrip = Trip(
+                                        id = trip.id,
+                                        title = title,
+                                        date = date,
+                                        places = trip.places.toList(),
+                                        notes = notes
+                                    )
+                                    onAddPlaceClick(updatedTrip)
                                 },
-                                containerColor = if (title.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                contentColor = if (title.isNotEmpty()) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                }
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = "Добавить место")
                             }
                         }
                     }
-
                 }
             }
         ) { innerPadding ->
@@ -301,72 +229,38 @@ fun TripEditScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    AnimatedVisibility(
-                        visible = isTitleError && isTouched,
-                        enter = scaleIn() + fadeIn(),
-                        exit = scaleOut() + fadeOut()
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Ошибка",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Обязательно",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                    Text(
-                        text = "*",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
 
                 OutlinedTextField(
                     value = title,
-                    onValueChange = {
-                        title = it
-                        if (isTouched) {
-                            isTitleError = it.isEmpty()
-                            showSaveError = it.isEmpty()
-                        }
+                    onValueChange = { newTitle ->
+                        title = newTitle
+                        onTitleChange(newTitle)
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    isError = highlightTitleError,
                     placeholder = {
                         Text(
-                            "Введите название поездки",
-                            color = if (isTitleError && isTouched) {
-                                MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            when {
+                                isCreateMode &&
+                                        showGeneratedTitle &&
+                                        title.isBlank() &&
+                                        defaultTitle.isNotBlank() ->
+                                    defaultTitle
+
+                                else ->
+                                    "Введите название поездки"
                             }
                         )
                     },
-                    isError = isTitleError && isTouched,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = if (isTitleError && isTouched) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                        unfocusedContainerColor = if (isTitleError && isTouched) {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     supportingText = {
-                        if (isTitleError && isTouched) {
+                        if (highlightTitleError) {
                             Text(
-                                text = "Введите название поездки для сохранения",
+                                text = "Введите название поездки",
                                 color = MaterialTheme.colorScheme.error
                             )
                         } else {
@@ -377,11 +271,7 @@ fun TripEditScreen(
                         }
                     },
                     singleLine = true,
-                    shape = if (isTitleError && isTouched) {
-                        RoundedCornerShape(12.dp)
-                    } else {
-                        RoundedCornerShape(8.dp)
-                    }
+                    shape = RoundedCornerShape(8.dp)
                 )
 
                 Divider(
@@ -398,19 +288,18 @@ fun TripEditScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-
                 }
 
-                if (places.isNotEmpty()) {
+                if (trip.places.isNotEmpty()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        places.forEach { place ->
+                        trip.places.forEach { place ->
                             PlaceListItem(
                                 place = place,
                                 onRemoveClick = {
-                                    softRemovePlace(place.id)
+                                    onRemovePlaceClick(place.id)
                                 },
                                 onPlaceClick = { clickedPlace ->
                                     onPlaceClick(clickedPlace)
@@ -441,10 +330,12 @@ fun TripEditScreen(
                         }
                     }
                 }
+
                 DatePickerButtonWithBottomSheet(
                     selectedDate = date,
                     onDateSelected = { selectedDate ->
                         date = selectedDate
+                        onDateChange(selectedDate)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -457,7 +348,10 @@ fun TripEditScreen(
 
                 OutlinedTextField(
                     value = notes,
-                    onValueChange = { notes = it },
+                    onValueChange = { newNotes ->
+                        notes = newNotes
+                        onNotesChange(newNotes)
+                    },
                     label = { Text("Ваши заметки...") },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -481,7 +375,6 @@ fun PlaceListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onPlaceClick(place) },
-
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -527,6 +420,7 @@ fun PlaceListItem(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerButtonWithBottomSheet(
@@ -720,6 +614,7 @@ fun DatePickerButtonWithBottomSheet(
         }
     }
 }
+
 fun formatTripDateRange(startDate: Long?, endDate: Long?): String {
     return when {
         startDate == null -> ""
@@ -728,6 +623,7 @@ fun formatTripDateRange(startDate: Long?, endDate: Long?): String {
         else -> "${formatDateForDisplay(startDate)} — ${formatDateForDisplay(endDate)}"
     }
 }
+
 fun parseDateRange(dateRange: String): Pair<Long?, Long?> {
     if (dateRange.isEmpty()) return null to null
 
@@ -774,12 +670,20 @@ fun formatDateForCalendar(timestamp: Long): String {
 fun TripEditScreenPreview() {
     MaterialTheme {
         TripEditScreen(
+            trip = Trip(),
             onBackClick = {},
+            isCreateMode = false,
+            defaultTitle = "",
+            showGeneratedTitle = false,
             onSaveTrip = {},
+            onTitleChange = {},
+            onDateChange = {},
+            onNotesChange = {},
+            deleteTrip = {},
             onAddPlaceClick = {},
-            onRemovePlaceClick = { tripId, placeId -> },
+            onRemovePlaceClick = {},
             onPlaceClick = {},
-            deleteTrip = {}
+            highlightTitleError = false
         )
     }
 }

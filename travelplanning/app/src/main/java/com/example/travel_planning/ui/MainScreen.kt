@@ -1,5 +1,6 @@
 package com.example.travel_planning.ui
 
+import Place
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -9,6 +10,26 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +55,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +71,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,12 +81,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
+import coil.compose.AsyncImage
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
-import com.example.travel_planning.utils.AnimatedFAB
 import com.example.travel_planning.utils.AnimatedListItem
+import com.example.travel_planning.utils.loadJsonListFromAssets
 import kotlinx.coroutines.launch
+import android.content.Intent
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 
 data class ListItem(
     val id: Int,
@@ -68,17 +99,19 @@ data class ListItem(
 )
 
 data class GalleryItem(
-    val id: Int,
-    val color: Color,
-    val title: String
+    val category: String,
+    val imagePath: String
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     onAddTripClick: () -> Unit,
+    onGalleryItemClick: (String) -> Unit,
     repository: TripRepository? = null,
     tripsOverride: List<TripEntity>? = null,
     onEditTripClick: (Long) -> Unit,
+    onShareTripClick: (Long) -> Unit,
     onDeleteTrips: (List<Long>) -> Unit,
     onSelectionResetCallback: ((() -> Unit) -> Unit)? = null
 ) {
@@ -88,6 +121,7 @@ fun MainScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedTrips = remember { mutableStateListOf<Long>() }
     var showAddFab by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         onSelectionResetCallback?.invoke {
@@ -95,10 +129,12 @@ fun MainScreen(
             isSelectionMode = false
         }
     }
+
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
         showAddFab = true
     }
+
     LaunchedEffect(tripsOverride) {
         tripsOverride?.let {
             trips = it
@@ -118,6 +154,11 @@ fun MainScreen(
                 isLoading = false
             }
         }
+    }
+
+    BackHandler(enabled = isSelectionMode) {
+        selectedTrips.clear()
+        isSelectionMode = false
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -145,15 +186,24 @@ fun MainScreen(
         onDeleteTrips(selectedTrips.toList())
     }
 
-    val galleryItems = remember {
-        listOf(
-            GalleryItem(1, Color(0xFFFF6B6B), "Летний сад"),
-            GalleryItem(2, Color(0xFF4ECDC4), "Петропавловская крепость"),
-            GalleryItem(3, Color(0xFF45B7D1), "Исаакиевский собор"),
-            GalleryItem(4, Color(0xFF96CEB4), "Дворцовая площадь"),
-            GalleryItem(5, Color(0xFFF7DC6F), "Крейсер Аврора"),
-            GalleryItem(6, Color(0xFFBB8FCE), "Казанский собор")
-        )
+    val allPlaces: List<Place> = remember {
+        loadJsonListFromAssets(context, "all_places.json")
+    }
+
+    val galleryItems = remember(allPlaces) {
+        allPlaces
+            .groupBy { it.category }
+            .mapNotNull { (category, placesInCategory) ->
+                placesInCategory
+                    .getOrNull(0)
+                    ?.image_filename
+                    ?.let { image ->
+                        GalleryItem(
+                            category = category,
+                            imagePath = image
+                        )
+                    }
+            }
     }
 
     Scaffold(
@@ -208,7 +258,6 @@ fun MainScreen(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 item {
                     LazyRow(
                         modifier = Modifier
@@ -217,7 +266,12 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(galleryItems) { item ->
-                            GalleryCard(item = item)
+                            GalleryCard(
+                                item = item,
+                                onClick = {
+                                    onGalleryItemClick(item.category)
+                                }
+                            )
                         }
                     }
                 }
@@ -245,14 +299,21 @@ fun MainScreen(
                                 isSelectionMode = isSelectionMode,
                                 onEditTrip = { onEditTripClick(trip.id_) },
                                 onSelectTrip = { shouldSelect ->
-                                    if (!isSelectionMode) isSelectionMode = true
+                                    if (!isSelectionMode && shouldSelect) {
+                                        isSelectionMode = true
+                                    }
                                     if (shouldSelect) {
-                                        if (!selectedTrips.contains(trip.id_)) selectedTrips.add(trip.id_)
+                                        if (!selectedTrips.contains(trip.id_)) {
+                                            selectedTrips.add(trip.id_)
+                                        }
                                     } else {
                                         selectedTrips.remove(trip.id_)
-                                        if (selectedTrips.isEmpty()) isSelectionMode = false
+                                        if (selectedTrips.isEmpty()) {
+                                            isSelectionMode = false
+                                        }
                                     }
-                                }
+                                },
+                                onShareTrip = { onShareTripClick(trip.id_) }
                             )
                         }
                     }
@@ -272,39 +333,44 @@ fun MainScreen(
         }
     }
 }
-    @Composable
-    fun GalleryCard(item: GalleryItem) {
-        Card(
-            onClick = { /* переход на карточку из гелереи */ },
-            modifier = Modifier
-                .size(200.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
+
+@Composable
+fun GalleryCard(
+    item: GalleryItem,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.size(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box {
+            AsyncImage(
+                model = "file:///android_asset/${item.imagePath}",
+                contentDescription = item.category,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(item.color)
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .padding(13.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2
-                    )
-                }
+                Text(
+                    text = item.category,
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
+}
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListItemCard(
@@ -313,98 +379,215 @@ fun ListItemCard(
     isSelected: Boolean = false,
     isSelectionMode: Boolean = false,
     onEditTrip: () -> Unit,
-    onSelectTrip: (Boolean) -> Unit
+    onSelectTrip: (Boolean) -> Unit,
+    onShareTrip: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    val shareWidth = 72.dp
+    val shareWidthPx = with(density) { shareWidth.toPx() }
+    val offsetX = remember { Animatable(0f) }
+    val swipeThreshold = shareWidthPx / 2
+
+    val isSwiping = remember { mutableStateOf(false) }
     var isPressed by remember { mutableStateOf(false) }
 
     val targetColor = when {
         isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-        isPressed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+        isPressed && !isSwiping.value -> MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
         else -> MaterialTheme.colorScheme.surface
     }
     val backgroundColor by animateColorAsState(
         targetValue = targetColor,
-        label = "cardBackground"
+        label = "cardBackground",
+        animationSpec = tween(durationMillis = 200)
     )
 
-    Card(
+    Box(
         modifier = modifier
             .fillMaxWidth()
+            .height(80.dp)
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .pointerInput(isSelectionMode) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        try {
-                            tryAwaitRelease()
-                        } finally {
-                            isPressed = false
-                        }
-                    },
-                    onLongPress = {
-                        onSelectTrip(true)
-                    },
-                    onTap = {
-                        if (isSelectionMode) {
-                            onSelectTrip(!isSelected)
-                        } else {
-                            onEditTrip()
-                        }
-                    }
-
-    )
-            },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
-        val checkboxWidth by animateDpAsState(
-            targetValue = if (isSelectionMode) 48.dp else 0.dp,
-            animationSpec = tween(300)
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-                .padding(horizontal = 16.dp)
-        ) {
-            Box(modifier = Modifier.width(checkboxWidth), contentAlignment = Alignment.CenterStart) {
-                if (isSelectionMode) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { checked -> onSelectTrip(checked) },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary,
-                            uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+        if (offsetX.value < -5f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(
+                            topEnd = 12.dp,
+                            bottomEnd = 12.dp,
+                            topStart = 0.dp,
+                            bottomStart = 0.dp
                         )
                     )
-                }
-            }
-
-            Column(
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                    .padding(end = 16.dp)
+                    .clickable(
+                        enabled = !isSelectionMode && offsetX.value < -shareWidthPx / 2,
+                        onClick = {
+                            coroutineScope.launch {
+                                offsetX.animateTo(0f)
+                                onShareTrip()
+                            }
+                        }
+                    ),
+                contentAlignment = Alignment.CenterEnd
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                if (item.description.isNotEmpty()) {
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(top = 4.dp)
+                Box(
+                    modifier = Modifier
+                        .width(shareWidth)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = "Поделиться",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
         }
 
+        Card(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .fillMaxWidth()
+                .pointerInput(isSelectionMode) {
+                    if (!isSelectionMode) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                isSwiping.value = true
+                                isPressed = false
+                            },
+                            onDragEnd = {
+                                coroutineScope.launch {
+                                    if (abs(offsetX.value) > swipeThreshold) {
+                                        offsetX.animateTo(-shareWidthPx)
+                                    } else {
+                                        offsetX.animateTo(0f)
+                                    }
+                                }
+                                isSwiping.value = false
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                val newOffset = (offsetX.value + dragAmount)
+                                    .coerceIn(-shareWidthPx, 0f)
+                                coroutineScope.launch {
+                                    offsetX.snapTo(newOffset)
+                                }
+                            }
+                        )
+                    }
+                }
+                .pointerInput(isSelectionMode, isSwiping.value, offsetX.value) {
+                    if (!isSelectionMode && !isSwiping.value && offsetX.value == 0f) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                try {
+                                    tryAwaitRelease()
+                                } finally {
+                                    isPressed = false
+                                }
+                            },
+                            onLongPress = {
+                                onSelectTrip(true)
+                            },
+                            onTap = {
+                                if (isSelectionMode) {
+                                    onSelectTrip(!isSelected)
+                                } else {
+                                    onEditTrip()
+                                }
+                            }
+                        )
+                    }
+                }
+                .then(
+                    if (isSelectionMode) {
+                        Modifier.clickable(
+                            onClick = {
+                                onSelectTrip(!isSelected)
+                            }
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        ) {
+            val checkboxWidth by animateDpAsState(
+                targetValue = if (isSelectionMode) 48.dp else 0.dp,
+                animationSpec = tween(300)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.width(checkboxWidth),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (isSelectionMode) {
+                        Checkbox(
+                            checked = isSelected,
+                            onCheckedChange = { checked -> onSelectTrip(checked) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp)
+                ) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    if (item.description.isNotEmpty()) {
+                        Text(
+                            text = item.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 4.dp),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isSelectionMode) {
+        if (isSelectionMode) {
+            offsetX.animateTo(0f)
+        }
+    }
+
+    LaunchedEffect(offsetX.value) {
+        if (offsetX.value > 0) {
+            offsetX.animateTo(0f)
+        }
     }
 }
-
 @Composable
 fun MainFABs(
     isSelectionMode: Boolean,
@@ -413,32 +596,49 @@ fun MainFABs(
     onDeleteClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
-        AnimatedFAB(
+        AnimatedVisibility(
             visible = showAddFab && !isSelectionMode,
+            enter = fadeIn(animationSpec = tween(300)) +
+                    slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(300)
+                    ),
+            exit = fadeOut(animationSpec = tween(300)) +
+                    slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(300)
+                    ),
             modifier = Modifier.align(Alignment.BottomEnd)
         ) {
             FloatingActionButton(
                 onClick = onAddClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add,
-                    contentDescription = "Добавить")
+                Icon(Icons.Default.Add, contentDescription = "Добавить")
             }
         }
 
-        AnimatedFAB(
+        AnimatedVisibility(
             visible = isSelectionMode,
+            enter = fadeIn(animationSpec = tween(300)) +
+                    slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(300)
+                    ),
+            exit = fadeOut(animationSpec = tween(300)) +
+                    slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(300)
+                    ),
             modifier = Modifier.align(Alignment.BottomEnd)
         ) {
             FloatingActionButton(
                 onClick = onDeleteClick,
                 containerColor = MaterialTheme.colorScheme.error
             ) {
-                Icon(Icons.Default.Delete,
-                    contentDescription = "Удалить выбранные")
+                Icon(Icons.Default.Delete, contentDescription = "Удалить выбранные")
             }
         }
     }
@@ -459,7 +659,9 @@ fun MainScreenPreview() {
             tripsOverride = fakeTrips,
             onEditTripClick = {},
             onDeleteTrips = {},
-            onSelectionResetCallback = null
+            onSelectionResetCallback = null,
+            onGalleryItemClick = {},
+            onShareTripClick = {}
         )
     }
 }
