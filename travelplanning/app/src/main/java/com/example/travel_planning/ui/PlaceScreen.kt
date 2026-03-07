@@ -592,7 +592,7 @@ fun PlaceCard(
     val imageModel = if (imageFile.exists()) {
         imageFile
     } else {
-        "http://45.150.11.208:8000/static/${place.image_filename}"
+        "http://45.150.11.208:8000/${place.image_filename}"
     }
     Card(
         modifier = Modifier

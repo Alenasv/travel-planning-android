@@ -91,6 +91,8 @@ import kotlinx.coroutines.launch
 import android.content.Intent
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import coil.request.ImageRequest
+import com.example.travel_planning.network.downloadImage
 import com.example.travel_planning.network.downloadJson
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import java.io.File
@@ -197,7 +199,7 @@ fun MainScreen(
         allPlaces = if (success) {
             loadJsonListFromInternal(context, "all_places.json")
         } else {
-            loadJsonListFromAssets(context, "all_places.json")//убрать
+           loadJsonListFromAssets(context, "all_places.json")
         }
         isLoading = false
     }
@@ -352,6 +354,17 @@ fun GalleryCard(item: GalleryItem, onClick: () -> Unit) {
     val context = LocalContext.current
     val localFile = File(context.filesDir, item.imagePath)
 
+    var fileToUse by remember { mutableStateOf<File?>(if (localFile.exists()) localFile else null) }
+
+    LaunchedEffect(item.imagePath) {
+        if (fileToUse == null) {
+            val downloaded = downloadImage(context, item.imagePath)
+            if (downloaded != null) {
+                fileToUse = downloaded
+            }
+        }
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.size(200.dp),
@@ -360,7 +373,7 @@ fun GalleryCard(item: GalleryItem, onClick: () -> Unit) {
     ) {
         Box {
             AsyncImage(
-                model = if (localFile.exists()) localFile else "http://45.150.11.208:8000/static/${item.imagePath}",
+                model = fileToUse ?: "http://45.150.11.208:8000/${item.imagePath}",
                 contentDescription = item.category,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

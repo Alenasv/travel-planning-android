@@ -4,7 +4,7 @@ import retrofit2.http.GET
 
 interface Api {
 
-    @GET("getjson/{filename}")
+    @GET("data/{filename}")
     fun getJson(
         @retrofit2.http.Path("filename") filename: String
     ): Call<ResponseBody>
