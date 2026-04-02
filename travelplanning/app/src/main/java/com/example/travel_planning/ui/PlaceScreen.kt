@@ -36,6 +36,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import com.example.travel_planning.network.downloadImage
 import java.io.File
 
 data class Place(
@@ -573,7 +574,6 @@ fun CategoryChip(
         )
     )
 }
-
 @Composable
 fun PlaceCard(
     place: Place,
@@ -587,13 +587,25 @@ fun PlaceCard(
     )
     val elevation = if (isSelected) 12.dp else 6.dp
     val context = LocalContext.current
-    val imageFile = File(context.filesDir, place.image_filename)
 
-    val imageModel = if (imageFile.exists()) {
-        imageFile
-    } else {
-        "http://45.150.11.208:8000/${place.image_filename}"
+    val safeFileName = place.image_filename.hashCode().toString() + ".jpg"
+    val localImageFile = File(context.cacheDir, safeFileName)
+
+    var imageModel by remember { mutableStateOf<Any>(
+        "http://45.150.11.208:8000/static/${place.image_filename.removePrefix("data/")}"
+    ) }
+
+    LaunchedEffect(place.image_filename) {
+        if (!localImageFile.exists() && place.image_filename.isNotEmpty()) {
+            val downloadedFile = downloadImage(context, place.image_filename)
+            if (downloadedFile != null) {
+                imageModel = downloadedFile
+            }
+        } else if (localImageFile.exists()) {
+            imageModel = localImageFile
+        }
     }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()

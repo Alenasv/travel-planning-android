@@ -2,6 +2,8 @@ package com.example.travel_planning.network
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -27,24 +29,38 @@ suspend fun downloadJson(context: Context, filename: String): Boolean {
         false
     }
 }
+
 suspend fun downloadImage(context: Context, relativePath: String): File? {
-    return try {
-        val url = "http://45.150.11.208:8000/$relativePath"
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
-        val response = client.newCall(request).execute()
+    return withContext(Dispatchers.IO) {
+        try {
+            val cleanPath = relativePath.trim().removePrefix("/").let {
+                if (it.startsWith("data/")) it.removePrefix("data/") else it
+            }
 
-        if (!response.isSuccessful) return null
+            val file = File(context.filesDir, cleanPath)
+            if (file.exists()) return@withContext file
 
-        val bytes = response.body?.bytes() ?: return null
-        val file = File(context.filesDir, relativePath)
+            val url = "http://45.150.11.208:8000/static/$cleanPath"
 
-        file.parentFile?.mkdirs()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
 
-        FileOutputStream(file).use { it.write(bytes) }
-        file
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+
+            if (!response.isSuccessful) return@withContext null
+
+            val bytes = response.body?.bytes() ?: return@withContext null
+
+            file.parentFile?.mkdirs()
+            FileOutputStream(file).use { it.write(bytes) }
+
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }

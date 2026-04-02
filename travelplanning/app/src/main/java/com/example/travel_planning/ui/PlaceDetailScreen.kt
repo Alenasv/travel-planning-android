@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
 import java.io.File
 
 
@@ -74,13 +72,20 @@ fun PlaceDetailScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             if (place != null) {
                 val context = LocalContext.current
-                val imageFile = File(context.filesDir, place.image_filename)
 
-                val imageModel = if (imageFile.exists()) {
-                    imageFile
-                } else {
-                    "http://45.150.11.208:8000/${place.image_filename}"
+                val localFile = File(context.filesDir, place.image_filename)
+                var imageFile by remember { mutableStateOf<File?>(if (localFile.exists()) localFile else null) }
+
+                LaunchedEffect(place.image_filename) {
+                    if (imageFile == null && place.image_filename.isNotEmpty()) {
+                        val downloaded = com.example.travel_planning.network.downloadImage(context, place.image_filename)
+                        if (downloaded != null) {
+                            imageFile = downloaded
+                        }
+                    }
                 }
+                val imageModel = imageFile ?: "https://via.placeholder.com/600x400.png?text=No+Image"
+
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(bottom = 80.dp),
