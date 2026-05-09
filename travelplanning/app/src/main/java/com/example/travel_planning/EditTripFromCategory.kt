@@ -1,6 +1,5 @@
 package com.example.travel_planning
 
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,6 +15,7 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel

@@ -1,6 +1,5 @@
 package com.example.travel_planning.ui
 
-import Place
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.travel_planning.utils.Place
 import java.io.File
 
 
@@ -222,7 +222,8 @@ val place = Place(
     address= "адрес",
     description= "описание",
     image_filename = "",
-    work_time=""
+    work_time="",
+    tags =listOf("музеи", "история", "искусство")
 )
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

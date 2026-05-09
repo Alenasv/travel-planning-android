@@ -1,6 +1,5 @@
 package com.example.travel_planning.ui
 
-import Place
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -89,6 +88,7 @@ import com.example.travel_planning.utils.AnimatedListItem
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.network.downloadImage
 import com.example.travel_planning.network.downloadJson
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import java.io.File
 

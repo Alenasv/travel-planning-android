@@ -1,10 +1,10 @@
 package com.example.travel_planning.view_model
 
-import Place
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.Trip
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.toEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,6 +1,5 @@
 package com.example.travel_planning.utils
 
-import Place
 import com.example.travel_planning.db.entities.PlaceEntity
 
  fun Place.toEntity(): PlaceEntity {
@@ -11,6 +10,7 @@ import com.example.travel_planning.db.entities.PlaceEntity
         address = this.address,
         work_time = this.work_time.ifEmpty { null },
         description = this.description.ifEmpty { null },
-        imageFilename = this.image_filename.ifEmpty { null }
+        imageFilename = this.image_filename.ifEmpty { null },
+        tags = this.tags.joinToString(",")
     )
 }

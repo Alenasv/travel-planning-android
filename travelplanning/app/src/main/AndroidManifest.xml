@@ -29,6 +29,9 @@
             android:name=".AddTripActivity"
             android:exported="false" />
         <activity
+            android:name=".AITripActivity"
+            android:exported="false" />
+        <activity
             android:name=".AddPlaceActivity"
             android:exported="false" />
         <activity android:name=".PlaceDetailActivity"

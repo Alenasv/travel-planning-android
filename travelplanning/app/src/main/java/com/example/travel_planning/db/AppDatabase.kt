@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.example.travel_planning.db.dao.PlaceDao
 import com.example.travel_planning.db.dao.TripDao
 import com.example.travel_planning.db.entities.PlaceEntity
@@ -12,9 +13,11 @@ import com.example.travel_planning.db.entities.TripPlaceCrossRef
 
 @Database(
     entities = [PlaceEntity::class, TripEntity::class, TripPlaceCrossRef::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
+
+@TypeConverters(TagConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun placeDao(): PlaceDao
     abstract fun tripDao(): TripDao

@@ -1,7 +1,6 @@
 package com.example.travel_planning
 
 import AddToRouteScreen
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
 
@@ -65,6 +65,12 @@ class AddFromTheCategory : ComponentActivity() {
                                 startActivity(intent)
                                 finish()
                             }
+                        },onAIClick = {
+                            val intent = Intent(
+                                this@AddFromTheCategory,
+                                AITripActivity::class.java
+                            )
+                            startActivity(intent)
                         },
 
                                 selectedCategory = selectedCategory,

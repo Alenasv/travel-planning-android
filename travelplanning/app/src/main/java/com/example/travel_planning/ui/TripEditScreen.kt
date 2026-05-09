@@ -1,6 +1,5 @@
 package com.example.travel_planning.ui
 
-import Place
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.example.travel_planning.utils.AnimatedFAB
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberDateRangePickerState
+import com.example.travel_planning.utils.Place
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date

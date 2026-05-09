@@ -1,9 +1,10 @@
 package com.example.travel_planning.repository
 
-import Place
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.db.entities.*
 import com.example.travel_planning.ui.Trip
+import com.example.travel_planning.utils.Place
+import com.example.travel_planning.utils.toTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -102,7 +103,8 @@ class TripRepository(private val db: AppDatabase) {
                         work_time = placeEntity.work_time ?: "",
                         category = placeEntity.category,
                         description = placeEntity.description ?: "",
-                        image_filename = placeEntity.imageFilename ?: ""
+                        image_filename = placeEntity.imageFilename ?: "",
+                        tags = placeEntity.tags.toTags()
                     )
                 }
             )

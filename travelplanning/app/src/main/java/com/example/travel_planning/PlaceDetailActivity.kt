@@ -1,6 +1,5 @@
 package com.example.travel_planning
 
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.Surface
 import com.example.travel_planning.ui.PlaceDetailScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
 

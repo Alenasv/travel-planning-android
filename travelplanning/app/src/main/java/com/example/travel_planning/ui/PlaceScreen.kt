@@ -42,17 +42,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import com.example.travel_planning.network.downloadImage
+import com.example.travel_planning.utils.Place
 import java.io.File
 
-data class Place(
-    val id: String,
-    val name: String,
-    val address: String,
-    val work_time: String,
-    val category: String,
-    val description: String,
-    val image_filename: String
-)
 sealed class GridItem {
 
     data object AICard : GridItem()
@@ -68,7 +60,8 @@ fun AddToRouteScreen(
     onPlaceClick: (Place, Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit,
     selectedCategory: String,
-    onCategorySelected: (String) -> Unit
+    onCategorySelected: (String) -> Unit,
+    onAIClick: () -> Unit
 )
  {
     val allCategories = remember(places) {
@@ -373,9 +366,7 @@ fun AddToRouteScreen(
 
                                 is GridItem.AICard -> {
                                     AIPreferenceCard(
-                                        onClick = {
-
-                                        },
+                                        onClick = onAIClick,
                                         isOnline = isInternetAvailable.value
                                     )
                                 }
@@ -884,12 +875,13 @@ fun SimpleAdaptiveText(
 @Composable
 fun PreviewAddToRouteScreen() {
     val samplePlaces = listOf(
-        Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", ""),
-        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", ""),
-        Place("4", "Кунсткамера", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("5", "Русский музей", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("6", "Мариинский театр", "адрес", "10:00-18:00", "Театр", "описание", "")
+        Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
+        Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", "",emptyList()),
+        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", "",emptyList()),
+        Place("4", "Кунсткамера", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
+        Place("5", "Русский музей", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
+        Place("6", "Мариинский театр", "адрес", "10:00-18:00", "Театр", "описание", "",emptyList()
+        )
     )
     var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
     MaterialTheme {
@@ -903,7 +895,8 @@ fun PreviewAddToRouteScreen() {
                 selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId
             },
             selectedCategory = "Музей",
-            onCategorySelected = {}
+            onCategorySelected = {},
+            onAIClick = {}
         )
     }
 }
