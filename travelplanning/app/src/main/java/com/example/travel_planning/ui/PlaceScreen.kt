@@ -1,4 +1,6 @@
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,9 +35,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import com.example.travel_planning.network.downloadImage
 import java.io.File
 
@@ -48,7 +53,11 @@ data class Place(
     val description: String,
     val image_filename: String
 )
+sealed class GridItem {
 
+    data object AICard : GridItem()
+    data class PlaceItem(val place: Place) : GridItem()
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
@@ -106,7 +115,7 @@ fun AddToRouteScreen(
                 .take(5)
         }
     }
-
+     val isInternetAvailable = remember { mutableStateOf(true) }
     fun handleSuggestionClick(suggestion: String) {
         searchQuery = TextFieldValue(suggestion)
 
@@ -126,7 +135,12 @@ fun AddToRouteScreen(
             }
         }
     }
-
+     val gridItems = remember(filteredPlaces) {
+         buildList {
+             add(GridItem.AICard)
+             addAll(filteredPlaces.map { GridItem.PlaceItem(it) })
+         }
+     }
     BackHandler() {
         onBackClick()
     }
@@ -346,17 +360,47 @@ fun AddToRouteScreen(
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(
-                            items = filteredPlaces,
-                            key = { it.id }
-                        ) { place ->
-                            val isSelected = place.id in selectedPlacesIds
+                            items = gridItems,
+                            key = {
+                                when (it) {
+                                    is GridItem.AICard -> "ai_card"
+                                    is GridItem.PlaceItem -> it.place.id
+                                    else -> it.hashCode().toString()
+                                }
+                            }
+                        ) { item ->
+                            when (item) {
 
-                            PlaceCard(
-                                place = place,
-                                isSelected = isSelected,
-                                onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
-                                onPlaceClick = { onPlaceClick(place, isSelected) }
-                            )
+                                is GridItem.AICard -> {
+                                    AIPreferenceCard(
+                                        onClick = {
+
+                                        },
+                                        isOnline = isInternetAvailable.value
+                                    )
+                                }
+
+                                is GridItem.PlaceItem -> {
+                                    val place = item.place
+                                    val isSelected = place.id in selectedPlacesIds
+
+                                    PlaceCard(
+                                        place = place,
+                                        isSelected = isSelected,
+                                        onToggleSelect = { toggled ->
+                                            onTogglePlace(place.id, toggled)
+                                        },
+                                        onPlaceClick = {
+                                            onPlaceClick(place, isSelected)
+                                        }
+                                    )
+                                }
+
+                                else -> {
+                                    Unit
+                                }
+
+                            }
                         }
                     }
                 }
@@ -364,7 +408,120 @@ fun AddToRouteScreen(
         }
     }
 }
+@Composable
+fun AIPreferenceCard(
+    onClick: () -> Unit,
+    isOnline: Boolean
+) {
+    val infinite = rememberInfiniteTransition(label = "ai")
 
+    val glow by infinite.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    val scale by infinite.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.02f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    Card(
+        onClick = if (isOnline) onClick else ({ }),
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.8f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (isOnline) 1f else 0.55f
+            },
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOnline)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = glow * 0.35f),
+                            Color.Transparent
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                TypewriterText(
+                    text = if (isOnline) " AI создаст маршрут" else "AI недоступен",
+                    isActive = isOnline
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = if (isOnline)
+                        "Нажми и получи маршрут"
+                    else
+                        "Нет интернета",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+@Composable
+fun TypewriterText(
+    text: String,
+    isActive: Boolean
+) {
+    var visibleText by remember(text, isActive) { mutableStateOf("") }
+
+    LaunchedEffect(text, isActive) {
+        if (!isActive) {
+            visibleText = text
+            return@LaunchedEffect
+        }
+
+        visibleText = ""
+
+        text.forEachIndexed { index, _ ->
+            visibleText = text.take(index + 1)
+            kotlinx.coroutines.delay(45)
+        }
+    }
+
+    Text(
+        text = visibleText,
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBar(

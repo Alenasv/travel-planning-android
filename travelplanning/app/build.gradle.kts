@@ -70,7 +70,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.coil)
-
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
