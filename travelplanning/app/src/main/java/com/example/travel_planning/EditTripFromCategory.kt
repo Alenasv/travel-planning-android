@@ -17,7 +17,7 @@ import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.UnsavedTripDialog
-import com.example.travel_planning.utils.loadJsonListFromAssets
+import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
 import com.example.travel_planning.view_model.TripEditViewModelFactory
 import kotlinx.coroutines.launch
@@ -41,11 +41,10 @@ class EditTripFromCategory : ComponentActivity() {
         )[TripEditViewModel::class.java]
 
         lifecycleScope.launch {
-            val allPlaces = loadJsonListFromAssets<Place>(
-                this@EditTripFromCategory,
-                "all_places.json"
-            )
+            val allPlaces = loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
+
             val selectedPlaces = allPlaces.filter { it.id in selectedPlaceIds }
+
             viewModel.initFromSelectedPlaces(selectedPlaceIds, selectedPlaces)
         }
 
@@ -67,11 +66,9 @@ class EditTripFromCategory : ComponentActivity() {
                             if (!isSelected) {
                                 viewModel.removePlace(placeId)
                             } else {
-                                val allPlaces = loadJsonListFromAssets<Place>(
-                                    this@EditTripFromCategory,
-                                    "all_places.json"
-                                )
-                                val place = allPlaces.find { it.id == placeId }
+                                val allPlaces: List<Place> =
+                                    loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
+                                val place = allPlaces.find { it.id.toString() == placeId }
                                 if (place != null) {
                                     viewModel.addPlace(place)
                                 }

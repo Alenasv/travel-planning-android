@@ -36,6 +36,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import com.example.travel_planning.network.downloadImage
+import java.io.File
 
 data class Place(
     val id: String,
@@ -572,7 +574,6 @@ fun CategoryChip(
         )
     )
 }
-
 @Composable
 fun PlaceCard(
     place: Place,
@@ -584,8 +585,26 @@ fun PlaceCard(
         targetValue = if (isSelected) 0.98f else 1f,
         animationSpec = tween(durationMillis = 150)
     )
-
     val elevation = if (isSelected) 12.dp else 6.dp
+    val context = LocalContext.current
+
+    val safeFileName = place.image_filename.hashCode().toString() + ".jpg"
+    val localImageFile = File(context.cacheDir, safeFileName)
+
+    var imageModel by remember { mutableStateOf<Any>(
+        "http://45.150.11.208:8000/static/${place.image_filename.removePrefix("data/")}"
+    ) }
+
+    LaunchedEffect(place.image_filename) {
+        if (!localImageFile.exists() && place.image_filename.isNotEmpty()) {
+            val downloadedFile = downloadImage(context, place.image_filename)
+            if (downloadedFile != null) {
+                imageModel = downloadedFile
+            }
+        } else if (localImageFile.exists()) {
+            imageModel = localImageFile
+        }
+    }
 
     Card(
         modifier = Modifier
@@ -607,7 +626,7 @@ fun PlaceCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = "file:///android_asset/${place.image_filename}",
+                    model = imageModel,
                     contentDescription = place.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

@@ -12,13 +12,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
+import com.example.travel_planning.utils.loadJsonListFromInternal
 
 class AddFromTheCategory : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val allPlaces: List<Place> = loadJsonListFromAssets(this, "all_places.json")
+        val allPlaces: List<Place> = loadJsonListFromInternal(this, "all_places.json")
 
         val initialCategory = intent.getStringExtra("CATEGORY") ?: "Все"
 

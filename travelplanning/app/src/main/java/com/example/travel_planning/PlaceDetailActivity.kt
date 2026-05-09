@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import com.example.travel_planning.ui.PlaceDetailScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.loadJsonListFromAssets
+import com.example.travel_planning.utils.loadJsonListFromInternal
 
 class PlaceDetailActivity : ComponentActivity() {
 
@@ -19,7 +20,8 @@ class PlaceDetailActivity : ComponentActivity() {
         val isSelected = intent.getBooleanExtra("IS_SELECTED", false)
         val mode = intent.getStringExtra("MODE") ?: "VIEW"
 
-        val places: List<Place> = loadJsonListFromAssets(this, "all_places.json")
+        val places:List<Place> =
+            loadJsonListFromInternal(this, "all_places.json")
         val currentPlace = places.find { it.id == placeId }
 
         setContent {

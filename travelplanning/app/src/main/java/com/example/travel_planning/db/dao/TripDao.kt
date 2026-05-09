@@ -2,6 +2,7 @@ package com.example.travel_planning.db.dao
 
 import androidx.room.*
 import com.example.travel_planning.db.entities.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TripDao {
@@ -12,7 +13,7 @@ interface TripDao {
     suspend fun updateTrip(trip: TripEntity)
 
     @Query("SELECT * FROM trip")
-    suspend fun getAllTrips(): List<TripEntity>
+    fun getAllTrips(): Flow<List<TripEntity>>
 
     @Delete
     suspend fun deleteTrip(trip: TripEntity)

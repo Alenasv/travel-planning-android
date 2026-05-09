@@ -87,10 +87,10 @@ import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.AnimatedListItem
 import com.example.travel_planning.utils.loadJsonListFromAssets
-import kotlinx.coroutines.launch
-import android.content.Intent
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import com.example.travel_planning.network.downloadImage
+import com.example.travel_planning.network.downloadJson
+import com.example.travel_planning.utils.loadJsonListFromInternal
+import java.io.File
 
 data class ListItem(
     val id: Int,
@@ -116,7 +116,10 @@ fun MainScreen(
     onSelectionResetCallback: ((() -> Unit) -> Unit)? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    var trips by remember { mutableStateOf(tripsOverride ?: emptyList<TripEntity>()) }
+    val trips: List<TripEntity> = repository?.getAllTrips()
+        ?.collectAsState(initial = emptyList())
+        ?.value ?: tripsOverride ?: emptyList()
+
     var isLoading by remember { mutableStateOf(true) }
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedTrips = remember { mutableStateListOf<Long>() }
@@ -137,7 +140,6 @@ fun MainScreen(
 
     LaunchedEffect(tripsOverride) {
         tripsOverride?.let {
-            trips = it
             isLoading = false
         }
     }
@@ -146,10 +148,10 @@ fun MainScreen(
         if (tripsOverride == null) {
             try {
                 repository?.let {
-                    trips = it.getAllTrips()
+                   // trips = it.getAllTrips()
                 }
             } catch (e: Exception) {
-                trips = emptyList()
+              //  trips = emptyList()
             } finally {
                 isLoading = false
             }
@@ -167,10 +169,10 @@ fun MainScreen(
                 lifecycleOwner.lifecycleScope.launch {
                     try {
                         repository?.let {
-                            trips = it.getAllTrips()
+                           // trips = it.getAllTrips()
                         }
                     } catch (e: Exception) {
-                        trips = emptyList()
+                       // trips = emptyList()
                     }
                 }
             }
@@ -185,9 +187,20 @@ fun MainScreen(
     val handleDeleteClick: () -> Unit = {
         onDeleteTrips(selectedTrips.toList())
     }
+    var allPlaces by remember { mutableStateOf<List<Place>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        allPlaces = loadJsonListFromInternal(context, "all_places.json")
+            .ifEmpty {
+                loadJsonListFromAssets(context, "all_places.json")
+            }
 
-    val allPlaces: List<Place> = remember {
-        loadJsonListFromAssets(context, "all_places.json")
+        val success = downloadJson(context, "all_places.json")
+
+        if (success) {
+            allPlaces = loadJsonListFromInternal(context, "all_places.json")
+        }
+
+        isLoading = false
     }
 
     val galleryItems = remember(allPlaces) {
@@ -200,7 +213,7 @@ fun MainScreen(
                     ?.let { image ->
                         GalleryItem(
                             category = category,
-                            imagePath = image
+                            imagePath = image.removePrefix("/")
                         )
                     }
             }
@@ -328,17 +341,50 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
-                }
+
             }
+        }
+
         }
     }
 }
-
 @Composable
-fun GalleryCard(
-    item: GalleryItem,
-    onClick: () -> Unit
-) {
+fun GalleryCard(item: GalleryItem, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val safePath = item.imagePath.trim().removePrefix("/").let {
+        if (it.startsWith("data/")) it.removePrefix("data/") else it
+    }
+    val localFile = File(context.filesDir, safePath)
+
+    var imageFile by remember { mutableStateOf<File?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(item.imagePath) {
+        isLoading = true
+        try {
+            val url = "http://45.150.11.208:8000/static/$safePath"
+            if (localFile.exists()) {
+                imageFile = localFile
+            }
+            val downloaded = downloadImage(context, safePath)
+
+            if (downloaded != null && downloaded.exists()) {
+                imageFile = downloaded
+            } else {
+                if (!localFile.exists()) {
+                    imageFile = null
+                }
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+
+            imageFile = if (localFile.exists()) localFile else null
+        } finally {
+            isLoading = false
+        }
+    }
+
     Card(
         onClick = onClick,
         modifier = Modifier.size(200.dp),
@@ -346,24 +392,41 @@ fun GalleryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box {
-            AsyncImage(
-                model = "file:///android_asset/${item.imagePath}",
-                contentDescription = item.category,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            when {
+                isLoading -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                imageFile != null -> AsyncImage(
+                    model = imageFile,
+                    contentDescription = item.category,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                else -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Нет изображения", color = Color.White)
+                }
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(12.dp)
+                    .padding(8.dp)
             ) {
                 Text(
                     text = item.category,
                     color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )

@@ -12,17 +12,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
+import java.io.File
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +46,7 @@ fun PlaceDetailScreen(
         kotlinx.coroutines.delay(300)
         showEnterAnimation = true
     }
-
+    val context = LocalContext.current
     BackHandler() {
         onBackClick()
     }
@@ -70,6 +71,21 @@ fun PlaceDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (place != null) {
+                val context = LocalContext.current
+
+                val localFile = File(context.filesDir, place.image_filename)
+                var imageFile by remember { mutableStateOf<File?>(if (localFile.exists()) localFile else null) }
+
+                LaunchedEffect(place.image_filename) {
+                    if (imageFile == null && place.image_filename.isNotEmpty()) {
+                        val downloaded = com.example.travel_planning.network.downloadImage(context, place.image_filename)
+                        if (downloaded != null) {
+                            imageFile = downloaded
+                        }
+                    }
+                }
+                val imageModel = imageFile ?: "https://via.placeholder.com/600x400.png?text=No+Image"
+
                 LazyColumn(
                     state = listState,
                     contentPadding = PaddingValues(bottom = 80.dp),
@@ -78,11 +94,9 @@ fun PlaceDetailScreen(
                         .padding(paddingValues)
                 ) {
                     item {
-                        val painter = rememberAsyncImagePainter(
-                            model = "file:///android_asset/${place.image_filename}"
-                        )
-                        Image(
-                            painter = painter,
+
+                        AsyncImage(
+                            model = imageModel,
                             contentDescription = place.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
