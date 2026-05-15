@@ -71,7 +71,7 @@ import com.example.travel_planning.utils.PlaceDto
 fun AITripScreen(
     api: Api,
     onBack: () -> Unit,
-    onGenerate: (List<String>, String?) -> Unit
+    onGenerate: (List<String>, String?, Int) -> Unit
 ) {
     val context = LocalContext.current
     val clusters = remember { mutableStateOf<List<ClusterDto>>(emptyList()) }
@@ -80,7 +80,7 @@ fun AITripScreen(
 
     var metroSearchText by remember { mutableStateOf("") }
     var selectedMetro by remember { mutableStateOf<String?>(null) }
-
+    var selectedCount by remember { mutableStateOf<Int?>(null) }
     val allMetroStations = remember {
         try {
             com.example.travel_planning.utils.loadJsonListFromAssets(context, "metro_stations.json")
@@ -218,10 +218,38 @@ fun AITripScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Сколько мест показать",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
 
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                        listOf(3, 5, 7, 10).forEach { count ->
+                            FilterChip(
+                                selected = selectedCount == count,
+                                onClick = {
+                                    selectedCount = if (selectedCount == count) null else count
+                                },
+                                label = { Text("$count") }
+                            )
+                        }
+
+                        FilterChip(
+                            selected = selectedCount == null,
+                            onClick = { selectedCount = null },
+                            label = { Text("random") }
+                        )
+                    }
+                }
                 AiMagicGenerateButton(
                     enabled = selectedInterests.isNotEmpty(),
-                    onClick = { onGenerate(selectedInterests.toList(), selectedMetro) }
+                    onClick = {
+                        val count = selectedCount ?: (3..10).random()
+                        onGenerate(selectedInterests.toList(), selectedMetro, count)
+                    }
                 )
             }
         }

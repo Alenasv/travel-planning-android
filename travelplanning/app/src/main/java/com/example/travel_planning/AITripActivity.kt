@@ -22,13 +22,13 @@ class AITripActivity : ComponentActivity() {
                 AITripScreen(
                     api = ApiClient.api,
                     onBack = { finish() },
-                    onGenerate = { selectedTags, selectedMetro ->
+                    onGenerate = { selectedTags, selectedMetro, topK ->
 
                         lifecycleScope.launch {
                             val response = ApiClient.api.recommend(
                                 RecommendRequest(
                                     user_preferences = selectedTags,
-                                    top_k = 10,
+                                    top_k = topK,
                                     start_metro = selectedMetro?.takeIf { it.isNotBlank() }
                                 )
                             )
