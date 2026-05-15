@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.network.ApiClient
 import com.example.travel_planning.network.model.RecommendRequest
+import com.example.travel_planning.network.model.RecommendedPlace
 import com.example.travel_planning.ui.AITripScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import kotlinx.coroutines.launch
@@ -24,24 +25,32 @@ class AITripActivity : ComponentActivity() {
                     onGenerate = { selectedTags, selectedMetro ->
 
                         lifecycleScope.launch {
-                            try {
-                                val response = ApiClient.api.recommend(
-                                    RecommendRequest(
-                                        user_preferences = selectedTags,
-
-                                        top_k = 10,
-                                        start_metro = selectedMetro
-                                    )
+                            val response = ApiClient.api.recommend(
+                                RecommendRequest(
+                                    user_preferences = selectedTags,
+                                    top_k = 10,
+                                    start_metro = selectedMetro?.takeIf { it.isNotBlank() }
                                 )
+                            )
 
+                            SelectedPlacesHolder.places = response.places
 
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                            val intent = Intent(this@AITripActivity, EditTripActivity::class.java)
+                            intent.putExtra("MODE", "AI")
+                            intent.putExtra("TRIP_ID", 0L)
+
+                            startActivity(intent)
                         }
                     }
                 )
             }
         }
+    }
+}
+object SelectedPlacesHolder {
+    var places: List<RecommendedPlace> = emptyList()
+
+    fun clear() {
+        places = emptyList()
     }
 }

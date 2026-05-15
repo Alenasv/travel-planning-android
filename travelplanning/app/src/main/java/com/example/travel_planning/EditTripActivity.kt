@@ -62,12 +62,8 @@ class EditTripActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        tripId = intent.getLongExtra("TRIP_ID", -1)
-
-        if (tripId == -1L) {
-            finish()
-            return
-        }
+        val mode = intent.getStringExtra("MODE") ?: "EDIT"
+        tripId = intent.getLongExtra("TRIP_ID", -1L)
 
         val db = AppDatabase.getDatabase(applicationContext)
         repository = TripRepository(db)
@@ -78,7 +74,32 @@ class EditTripActivity : ComponentActivity() {
         )[TripEditViewModel::class.java]
 
         lifecycleScope.launch {
-            viewModel.initEditMode(tripId)
+
+            if (mode == "AI") {
+
+                val aiPlaces = SelectedPlacesHolder.places
+                SelectedPlacesHolder.clear()
+
+                val converted = aiPlaces.map {
+                    Place(
+                        id = it.id,
+                        name = it.name,
+                        address = it.address ?: "",
+                        work_time = it.work_time ?: "",
+                        category = it.category,
+                        description = "",
+                        image_filename = "",
+                        tags = emptyList()
+                    )
+                }
+
+                viewModel.initCreateMode()
+                viewModel.setPlaces(converted)
+
+            } else {
+
+                viewModel.initEditMode(tripId)
+            }
         }
 
         setContent {
@@ -106,7 +127,11 @@ class EditTripActivity : ComponentActivity() {
                         },
                         onSaveTrip = {
                             lifecycleScope.launch {
-                                viewModel.saveEdit()
+                                if (mode == "AI") {
+                                    viewModel.saveCreate()
+                                } else {
+                                    viewModel.saveEdit()
+                                }
                                 intentToMainActivity()
                             }
                         },
