@@ -240,7 +240,7 @@ fun AITripScreen(
                         FilterChip(
                             selected = selectedCount == null,
                             onClick = { selectedCount = null },
-                            label = { Text("random") }
+                            label = { Text("случайно") }
                         )
                     }
                 }
@@ -291,12 +291,6 @@ fun AiMagicGenerateButton(enabled: Boolean, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.FavoriteBorder,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     "Создать  маршрут",
