@@ -1,3 +1,4 @@
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -6,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +58,7 @@ fun AddToRouteScreen(
     selectedPlacesIds: Set<String>,
     places: List<Place>,
     onBackClick: () -> Unit,
+    isOnline: Boolean,
     onSaveTrip: (List<Place>) -> Unit,
     onPlaceClick: (Place, Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit,
@@ -74,7 +77,6 @@ fun AddToRouteScreen(
     var searchQuery by remember { mutableStateOf(TextFieldValue()) }
     val focusManager = LocalFocusManager.current
     val gridState = rememberLazyGridState()
-    val context = LocalContext.current
 
     val filteredPlaces = remember(places, selectedCategoryState, searchQuery.text) {
         if (selectedCategoryState == "Все" && searchQuery.text.isBlank()) {
@@ -108,7 +110,6 @@ fun AddToRouteScreen(
                 .take(5)
         }
     }
-     val isInternetAvailable = remember { mutableStateOf(true) }
     fun handleSuggestionClick(suggestion: String) {
         searchQuery = TextFieldValue(suggestion)
 
@@ -367,7 +368,7 @@ fun AddToRouteScreen(
                                 is GridItem.AICard -> {
                                     AIPreferenceCard(
                                         onClick = onAIClick,
-                                        isOnline = isInternetAvailable.value
+                                        isOnline = isOnline
                                     )
                                 }
 
@@ -427,7 +428,7 @@ fun AIPreferenceCard(
     )
 
     Card(
-        onClick = if (isOnline) onClick else ({ }),
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.8f)
@@ -480,6 +481,25 @@ fun AIPreferenceCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
+            }
+            if (!isOnline) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .size(30.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "!",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -896,7 +916,8 @@ fun PreviewAddToRouteScreen() {
             },
             selectedCategory = "Музей",
             onCategorySelected = {},
-            onAIClick = {}
+            onAIClick = {},
+            isOnline = false
         )
     }
 }

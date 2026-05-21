@@ -1,18 +1,24 @@
 package com.example.travel_planning
 
 import AddToRouteScreen
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import com.example.travel_planning.network.ApiClient
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
+import kotlinx.coroutines.launch
 
 class AddPlaceActivity : ComponentActivity() {
 
@@ -28,10 +34,13 @@ class AddPlaceActivity : ComponentActivity() {
             loadJsonListFromInternal(this, "all_places.json")
 
         setContent {
+
             TravelPlanningTheme {
                 Surface {
                     val selectedPlacesIds = remember { mutableStateOf(initiallySelectedIds.toSet()) }
+                    var isOnline by remember { mutableStateOf(true) }
 
+                    val coroutineScope = rememberCoroutineScope()
                     val placeDetailLauncher =
                         rememberLauncherForActivityResult(
                             ActivityResultContracts.StartActivityForResult()
@@ -49,10 +58,18 @@ class AddPlaceActivity : ComponentActivity() {
                                         selectedPlacesIds.value - placeId
                             }
                         }
-
+                    LaunchedEffect(Unit) {
+                        isOnline = try {
+                            ApiClient.api.ping()
+                            true
+                        } catch (e: Exception) {
+                            false
+                        }
+                    }
                     AddToRouteScreen(
                         selectedPlacesIds = selectedPlacesIds.value,
                         places = allPlaces,
+                        isOnline = isOnline,
                         onBackClick = {
                             val resultIntent = Intent().apply {
                                 putStringArrayListExtra(
@@ -83,11 +100,33 @@ class AddPlaceActivity : ComponentActivity() {
                                     selectedPlacesIds.value - placeId
                         },
                         onAIClick = {
-                            val intent = Intent(
-                                this@AddPlaceActivity,
-                                AITripActivity::class.java
-                            )
-                            startActivity(intent)
+
+                            coroutineScope.launch {
+
+                                try {
+
+                                    ApiClient.api.ping()
+
+                                    isOnline = true
+
+                                    startActivity(
+                                        Intent(
+                                            this@AddPlaceActivity,
+                                            AITripActivity::class.java
+                                        )
+                                    )
+
+                                } catch (e: Exception) {
+
+                                    isOnline = false
+
+                                    Toast.makeText(
+                                        this@AddPlaceActivity,
+                                        "Сервер недоступен",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
                         },
                         selectedCategory = selectedCategory,
                         onCategorySelected = { selectedCategory = it },
@@ -106,5 +145,6 @@ class AddPlaceActivity : ComponentActivity() {
                 }
             }
         }
+
     }
 }
