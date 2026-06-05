@@ -40,13 +40,7 @@ class EditTripFromCategory : ComponentActivity() {
             TripEditViewModelFactory(repository)
         )[TripEditViewModel::class.java]
 
-        lifecycleScope.launch {
-            val allPlaces = loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
-
-            val selectedPlaces = allPlaces.filter { it.id in selectedPlaceIds }
-
-            viewModel.initFromSelectedPlaces(selectedPlaceIds, selectedPlaces)
-        }
+        viewModel.handleSelectedPlaces(this, selectedPlaceIds)
 
         setContent {
             TravelPlanningTheme {
@@ -59,20 +53,10 @@ class EditTripFromCategory : ComponentActivity() {
                         ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         if (result.resultCode == RESULT_OK && result.data != null) {
-                            val placeId = result.data!!.getStringExtra("PLACE_ID")
-                                ?: return@rememberLauncherForActivityResult
+                            val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
                             val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
 
-                            if (!isSelected) {
-                                viewModel.removePlace(placeId)
-                            } else {
-                                val allPlaces: List<Place> =
-                                    loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
-                                val place = allPlaces.find { it.id.toString() == placeId }
-                                if (place != null) {
-                                    viewModel.addPlace(place)
-                                }
-                            }
+                            viewModel.handlePlaceDetailResult(this@EditTripFromCategory, placeId, isSelected)
                         }
                     }
 

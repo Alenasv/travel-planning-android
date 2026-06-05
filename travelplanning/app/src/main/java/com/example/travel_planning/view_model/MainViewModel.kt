@@ -24,7 +24,39 @@ class MainViewModel(
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
+    private val _allPlaces = MutableStateFlow<List<com.example.travel_planning.utils.Place>>(emptyList())
+    val allPlaces: StateFlow<List<com.example.travel_planning.utils.Place>> = _allPlaces
 
+    private val _isLoadingState = MutableStateFlow(_allPlaces.value.isEmpty())
+    val isLoadingState: StateFlow<Boolean> = _isLoadingState
+
+    fun loadInitialData(context: android.content.Context) {
+        viewModelScope.launch {
+            if (_allPlaces.value.isNotEmpty()) {
+                _isLoadingState.value = false
+                return@launch
+            }
+
+            _isLoadingState.value = true
+            try {
+                var places = com.example.travel_planning.utils.loadJsonListFromInternal(context, "all_places.json")
+                    .ifEmpty {
+                        com.example.travel_planning.utils.loadJsonListFromAssets(context, "all_places.json")
+                    }
+                _allPlaces.value = places
+
+                val success = com.example.travel_planning.network.downloadJson(context, "all_places.json")
+                if (success) {
+                    places = com.example.travel_planning.utils.loadJsonListFromInternal(context, "all_places.json")
+                    _allPlaces.value = places
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoadingState.value = false
+            }
+        }
+    }
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 

@@ -65,18 +65,18 @@ import com.example.travel_planning.network.model.RecommendedPlace
 import com.example.travel_planning.utils.ClusterDto
 import com.example.travel_planning.utils.ClustersResponse
 import com.example.travel_planning.utils.PlaceDto
+import com.example.travel_planning.view_model.AITripUiState
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AITripScreen(
-    api: Api,
+    uiState: AITripUiState,
+    isGenerating: Boolean,
     onBack: () -> Unit,
     onGenerate: (List<String>, String?, Int) -> Unit
 ) {
     val context = LocalContext.current
-    val clusters = remember { mutableStateOf<List<ClusterDto>>(emptyList()) }
     val selectedInterests = remember { mutableStateListOf<String>() }
-    val loading = remember { mutableStateOf(true) }
 
     var metroSearchText by remember { mutableStateOf("") }
     var selectedMetro by remember { mutableStateOf<String?>(null) }
@@ -95,17 +95,6 @@ fun AITripScreen(
         else allMetroStations.filter {
             it.contains(metroSearchText, ignoreCase = true)
         }.take(5)
-    }
-
-    LaunchedEffect(Unit) {
-        try {
-            val response = api.getClusters()
-            clusters.value = response.clusters
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            loading.value = false
-        }
     }
 
     Scaffold(
@@ -130,127 +119,139 @@ fun AITripScreen(
             )
         }
     ) { padding ->
-        if (loading.value) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when (uiState) {
+            is AITripUiState.Loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Метро", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            is AITripUiState.Error -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            is AITripUiState.Success -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Метро", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                    OutlinedTextField(
-                        value = selectedMetro ?: metroSearchText,
-                        onValueChange = {
-                            selectedMetro = null
-                            metroSearchText = it
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Выберите метро...") },
-                        leadingIcon = { Icon(Icons.Default.LocationOn, null) },
-                        trailingIcon = {
-                            if (selectedMetro != null || metroSearchText.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    selectedMetro = null
-                                    metroSearchText = ""
-                                }) { Icon(Icons.Default.Close, null) }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true
-                    )
+                        OutlinedTextField(
+                            value = selectedMetro ?: metroSearchText,
+                            onValueChange = {
+                                selectedMetro = null
+                                metroSearchText = it
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Выберите метро...") },
+                            leadingIcon = { Icon(Icons.Default.LocationOn, null) },
+                            trailingIcon = {
+                                if (selectedMetro != null || metroSearchText.isNotEmpty()) {
+                                    IconButton(onClick = {
+                                        selectedMetro = null
+                                        metroSearchText = ""
+                                    }) { Icon(Icons.Default.Close, null) }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            enabled = !isGenerating
+                        )
 
-                    AnimatedVisibility(visible = filteredMetro.isNotEmpty()) {
-                        Card(
-                            elevation = CardDefaults.cardElevation(4.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column {
-                                filteredMetro.forEach { station ->
-                                    Text(
-                                        text = station,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                selectedMetro = station
-                                                metroSearchText = ""
-                                            }
-                                            .padding(16.dp)
-                                    )
+                        AnimatedVisibility(visible = filteredMetro.isNotEmpty()) {
+                            Card(
+                                elevation = CardDefaults.cardElevation(4.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column {
+                                    filteredMetro.forEach { station ->
+                                        Text(
+                                            text = station,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable(enabled = !isGenerating) {
+                                                    selectedMetro = station
+                                                    metroSearchText = ""
+                                                }
+                                                .padding(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Ваши интересы", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Ваши интересы", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        clusters.value.forEach { cluster ->
-                            val isSelected = cluster.name in selectedInterests
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    if (isSelected) selectedInterests.remove(cluster.name)
-                                    else selectedInterests.add(cluster.name)
-                                },
-                                label = { Text(cluster.name) },
-                                leadingIcon = if (isSelected) {
-                                    { Icon(Icons.Default.Check, modifier = Modifier.size(16.dp), contentDescription = null) }
-                                } else null,
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            uiState.clusters.forEach { cluster ->
+                                val isSelected = cluster.name in selectedInterests
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        if (isSelected) selectedInterests.remove(cluster.name)
+                                        else selectedInterests.add(cluster.name)
+                                    },
+                                    label = { Text(cluster.name) },
+                                    leadingIcon = if (isSelected) {
+                                        { Icon(Icons.Default.Check, modifier = Modifier.size(16.dp), contentDescription = null) }
+                                    } else null,
+                                    shape = RoundedCornerShape(8.dp),
+                                    enabled = !isGenerating
+                                )
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Сколько мест показать",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                        listOf(3, 5, 7, 10).forEach { count ->
-                            FilterChip(
-                                selected = selectedCount == count,
-                                onClick = {
-                                    selectedCount = if (selectedCount == count) null else count
-                                },
-                                label = { Text("$count") }
-                            )
-                        }
-
-                        FilterChip(
-                            selected = selectedCount == null,
-                            onClick = { selectedCount = null },
-                            label = { Text("случайно") }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Сколько мест показать",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(3, 5, 7, 10).forEach { count ->
+                                FilterChip(
+                                    selected = selectedCount == count,
+                                    onClick = {
+                                        selectedCount = if (selectedCount == count) null else count
+                                    },
+                                    label = { Text("$count") },
+                                    enabled = !isGenerating
+                                )
+                            }
+
+                            FilterChip(
+                                selected = selectedCount == null,
+                                onClick = { selectedCount = null },
+                                label = { Text("случайно") },
+                                enabled = !isGenerating
+                            )
+                        }
                     }
+
+                    AiMagicGenerateButton(
+                        enabled = selectedInterests.isNotEmpty() && !isGenerating,
+                        onClick = {
+                            val count = selectedCount ?: (3..10).random()
+                            onGenerate(selectedInterests.toList(), selectedMetro, count)
+                        }
+                    )
                 }
-                AiMagicGenerateButton(
-                    enabled = selectedInterests.isNotEmpty(),
-                    onClick = {
-                        val count = selectedCount ?: (3..10).random()
-                        onGenerate(selectedInterests.toList(), selectedMetro, count)
-                    }
-                )
             }
         }
     }

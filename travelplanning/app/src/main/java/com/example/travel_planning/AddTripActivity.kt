@@ -131,14 +131,10 @@ class AddTripActivity : ComponentActivity() {
         ) { result ->
             if (result.resultCode == RESULT_OK) {
                 val updatedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
-                    ?: return@registerForActivityResult
-
-                val allPlaces: List<Place> =
-                    loadJsonListFromInternal(this, "all_places.json")
-                val updatedPlaces = allPlaces.filter { it.id in updatedIds }
-
-                viewModel.setPlaces(updatedPlaces)
-                viewModel.onReturnedFromChild()
+                if (updatedIds != null) {
+                    viewModel.handleSelectedPlaces(this, updatedIds)
+                    viewModel.onReturnedFromChild()
+                }
             }
         }
 

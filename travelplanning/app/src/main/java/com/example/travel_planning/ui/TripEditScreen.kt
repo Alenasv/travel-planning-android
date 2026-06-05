@@ -66,40 +66,18 @@ fun TripEditScreen(
 ) {
     val isEditing = trip.id != 0L
 
-    var title by remember(trip.id) { mutableStateOf(trip.title) }
-    var date by remember(trip.id) { mutableStateOf(trip.date) }
-    var notes by remember(trip.id) { mutableStateOf(trip.notes) }
-
-    LaunchedEffect(trip.title, trip.date, trip.notes) {
-        if (title != trip.title) title = trip.title
-        if (date != trip.date) date = trip.date
-        if (notes != trip.notes) notes = trip.notes
-    }
+    val title = trip.title
+    val date = trip.date
+    val notes = trip.notes
 
     var showAddFab by remember { mutableStateOf(false) }
     var isTouched by remember { mutableStateOf(highlightTitleError) }
 
     val saveTrip = {
-        val updatedTrip = Trip(
-            id = trip.id,
-            title = title,
-            date = date,
-            places = trip.places.toList(),
-            notes = notes
-        )
-        onSaveTrip(updatedTrip)
+        onSaveTrip(trip)
     }
-
-    val currentTripToSend = Trip(
-        id = trip.id,
-        title = title,
-        date = date,
-        places = trip.places.toList(),
-        notes = notes
-    )
-
     BackHandler {
-        onBackClick(currentTripToSend)
+        onBackClick(trip)
     }
 
     LaunchedEffect(Unit) {
@@ -131,7 +109,7 @@ fun TripEditScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { onBackClick(currentTripToSend) }) {
+                        IconButton(onClick = { onBackClick(trip) }) {
                             Icon(
                                 Icons.Default.ArrowBack,
                                 contentDescription = "Назад",
@@ -192,14 +170,7 @@ fun TripEditScreen(
                         ) {
                             FloatingActionButton(
                                 onClick = {
-                                    val updatedTrip = Trip(
-                                        id = trip.id,
-                                        title = title,
-                                        date = date,
-                                        places = trip.places.toList(),
-                                        notes = notes
-                                    )
-                                    onAddPlaceClick(updatedTrip)
+                                    onAddPlaceClick(trip)
                                 },
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -234,7 +205,6 @@ fun TripEditScreen(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { newTitle ->
-                        title = newTitle
                         onTitleChange(newTitle)
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -334,7 +304,6 @@ fun TripEditScreen(
                 DatePickerButtonWithBottomSheet(
                     selectedDate = date,
                     onDateSelected = { selectedDate ->
-                        date = selectedDate
                         onDateChange(selectedDate)
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -349,7 +318,6 @@ fun TripEditScreen(
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { newNotes ->
-                        notes = newNotes
                         onNotesChange(newNotes)
                     },
                     label = { Text("Ваши заметки...") },

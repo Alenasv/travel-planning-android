@@ -57,6 +57,9 @@ sealed class GridItem {
 fun AddToRouteScreen(
     selectedPlacesIds: Set<String>,
     places: List<Place>,
+    filteredPlaces: List<Place>,
+    searchQuery: TextFieldValue,
+    onSearchQueryChanged: (TextFieldValue) -> Unit,
     onBackClick: () -> Unit,
     isOnline: Boolean,
     onSaveTrip: (List<Place>) -> Unit,
@@ -67,68 +70,21 @@ fun AddToRouteScreen(
     onAIClick: () -> Unit
 )
  {
-    val allCategories = remember(places) {
-        listOf("Все") + places.map { it.category }.distinct()
-    }
+
     var selectedCategoryState by remember(selectedCategory) {
         mutableStateOf(selectedCategory)
     }
+     val allCategories = remember(places) {
+         listOf("Все") + places.map { it.category }.distinct()
+     }
+     val focusManager = LocalFocusManager.current
+     val gridState = rememberLazyGridState()
 
-    var searchQuery by remember { mutableStateOf(TextFieldValue()) }
-    val focusManager = LocalFocusManager.current
-    val gridState = rememberLazyGridState()
+     val searchSuggestions = remember(places, searchQuery.text) {
+         if (searchQuery.text.isBlank()) emptyList()
+         else places.map { it.name }.filter { it.lowercase().contains(searchQuery.text.lowercase()) }.distinct().take(5)
+     }
 
-    val filteredPlaces = remember(places, selectedCategoryState, searchQuery.text) {
-        if (selectedCategoryState == "Все" && searchQuery.text.isBlank()) {
-            return@remember places
-        }
-
-        var filtered = places
-
-        if (searchQuery.text.isNotBlank()) {
-            val query = searchQuery.text.lowercase()
-            filtered = filtered.filter { place ->
-                place.name.lowercase().contains(query)
-            }
-        }
-
-        if (selectedCategoryState != "Все") {
-            filtered = filtered.filter { it.category == selectedCategoryState }
-        }
-
-        filtered
-    }
-
-    val searchSuggestions = remember(places, searchQuery.text) {
-        if (searchQuery.text.isBlank()) {
-            emptyList()
-        } else {
-            places
-                .map { it.name }
-                .filter { it.lowercase().contains(searchQuery.text.lowercase()) }
-                .distinct()
-                .take(5)
-        }
-    }
-    fun handleSuggestionClick(suggestion: String) {
-        searchQuery = TextFieldValue(suggestion)
-
-        val foundPlace = places.firstOrNull { it.name == suggestion }
-        if (foundPlace != null) {
-            val placesInSameCategory = places.filter {
-                it.category == foundPlace.category &&
-                        it.name.lowercase().contains(suggestion.lowercase())
-            }
-
-            if (placesInSameCategory.size == 1) {
-                selectedCategoryState = foundPlace.category
-                onCategorySelected(foundPlace.category)
-            } else {
-                selectedCategoryState = "Все"
-                onCategorySelected("Все")
-            }
-        }
-    }
      val gridItems = remember(filteredPlaces) {
          buildList {
              add(GridItem.AICard)
@@ -195,12 +151,9 @@ fun AddToRouteScreen(
             ) {
                 SearchBar(
                     searchQuery = searchQuery,
-                    onSearchQueryChanged = { newValue ->
-                        searchQuery = newValue
-                    },
+                    onSearchQueryChanged = onSearchQueryChanged,
                     onClearClick = {
-                        searchQuery = TextFieldValue()
-                        selectedCategoryState = "Все"
+                        onSearchQueryChanged(TextFieldValue())
                         onCategorySelected("Все")
                         focusManager.clearFocus()
                     },
@@ -215,7 +168,14 @@ fun AddToRouteScreen(
                 if (searchQuery.text.isNotBlank() && searchSuggestions.isNotEmpty()) {
                     SearchSuggestions(
                         suggestions = searchSuggestions,
-                        onSuggestionClick = ::handleSuggestionClick,
+                        onSuggestionClick = { suggestion ->
+                            onSearchQueryChanged(TextFieldValue(suggestion))
+                            val foundPlace = places.firstOrNull { it.name == suggestion }
+                            if (foundPlace != null) {
+                                onCategorySelected(foundPlace.category)
+                            }
+                            focusManager.clearFocus()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -224,15 +184,14 @@ fun AddToRouteScreen(
 
                 CategoryFilter(
                     categories = allCategories,
-                    selectedCategory = selectedCategoryState,
+                    selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
-                        selectedCategoryState = category
                         onCategorySelected(category)
                     },
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                if (searchQuery.text.isNotBlank() || selectedCategoryState != "Все") {
+                if (searchQuery.text.isNotBlank() || selectedCategory != "Все") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -309,7 +268,8 @@ fun AddToRouteScreen(
                             if (searchQuery.text.isNotBlank()) {
                                 TextButton(
                                     onClick = {
-                                        searchQuery = TextFieldValue()
+                                        onSearchQueryChanged(TextFieldValue())
+                                        onCategorySelected("Все")
                                         focusManager.clearFocus()
                                     }
                                 ) {
@@ -331,8 +291,7 @@ fun AddToRouteScreen(
                             if (searchQuery.text.isNotBlank() && selectedCategoryState != "Все") {
                                 TextButton(
                                     onClick = {
-                                        searchQuery = TextFieldValue()
-                                        selectedCategoryState = "Все"
+                                        onSearchQueryChanged(TextFieldValue())
                                         onCategorySelected("Все")
                                         focusManager.clearFocus()
                                     }
@@ -889,35 +848,4 @@ fun SimpleAdaptiveText(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier.padding(bottom = 4.dp)
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewAddToRouteScreen() {
-    val samplePlaces = listOf(
-        Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
-        Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", "",emptyList()),
-        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", "",emptyList()),
-        Place("4", "Кунсткамера", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
-        Place("5", "Русский музей", "адрес", "10:00-18:00", "Музей", "описание", "",emptyList()),
-        Place("6", "Мариинский театр", "адрес", "10:00-18:00", "Театр", "описание", "",emptyList()
-        )
-    )
-    var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
-    MaterialTheme {
-        AddToRouteScreen(
-            places = samplePlaces,
-            onBackClick = {},
-            onSaveTrip = { selectedPlaces: List<Place> -> },
-            onPlaceClick = { place, isSelected -> },
-            selectedPlacesIds = setOf("1", "3"),
-            onTogglePlace = { placeId, toggled ->
-                selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId
-            },
-            selectedCategory = "Музей",
-            onCategorySelected = {},
-            onAIClick = {},
-            isOnline = false
-        )
-    }
 }
