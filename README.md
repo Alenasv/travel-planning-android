@@ -4,9 +4,11 @@
 
 Приложение позволяет создавать поездки, добавлять интересующие локации, получать интеллектуальные рекомендации маршрутов, синхронизировать данные с сервером и работать без подключения к Интернету
 
-<img src="images/screenshot1.jpg" width="190" />
-<img src="images/screenshot2.jpg" width="190" />
-<img src="images/screenshot3.jpg" width="190" />
+<p float="left">
+  <img src="images/screenshot1.jpg" width="190" />
+  <img src="images/screenshot2.jpg" width="190" />
+  <img src="images/screenshot3.jpg" width="190" />
+</p>
 
 ---
 
