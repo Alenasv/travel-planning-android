@@ -17,3 +17,4 @@ local.properties
 app/src/main/assets/all_places.json
 app/src/main/assets/kudago_images/
 app/src/main/assets/places_images/
+app/src/main/assets/metro_stations.json

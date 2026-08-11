@@ -1,9 +1,13 @@
+import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,100 +37,60 @@ import androidx.compose.ui.platform.LocalFocusManager
 import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import com.example.travel_planning.network.downloadImage
+import com.example.travel_planning.utils.Place
 import java.io.File
 
-data class Place(
-    val id: String,
-    val name: String,
-    val address: String,
-    val work_time: String,
-    val category: String,
-    val description: String,
-    val image_filename: String
-)
+sealed class GridItem {
 
+    data object AICard : GridItem()
+    data class PlaceItem(val place: Place) : GridItem()
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToRouteScreen(
     selectedPlacesIds: Set<String>,
     places: List<Place>,
+    filteredPlaces: List<Place>,
+    searchQuery: TextFieldValue,
+    onSearchQueryChanged: (TextFieldValue) -> Unit,
     onBackClick: () -> Unit,
+    isOnline: Boolean,
     onSaveTrip: (List<Place>) -> Unit,
     onPlaceClick: (Place, Boolean) -> Unit,
     onTogglePlace: (String, Boolean) -> Unit,
     selectedCategory: String,
-    onCategorySelected: (String) -> Unit
+    onCategorySelected: (String) -> Unit,
+    onAIClick: () -> Unit
 )
  {
-    val allCategories = remember(places) {
-        listOf("Все") + places.map { it.category }.distinct()
-    }
+
     var selectedCategoryState by remember(selectedCategory) {
         mutableStateOf(selectedCategory)
     }
+     val allCategories = remember(places) {
+         listOf("Все") + places.map { it.category }.distinct()
+     }
+     val focusManager = LocalFocusManager.current
+     val gridState = rememberLazyGridState()
 
-    var searchQuery by remember { mutableStateOf(TextFieldValue()) }
-    val focusManager = LocalFocusManager.current
-    val gridState = rememberLazyGridState()
-    val context = LocalContext.current
+     val searchSuggestions = remember(places, searchQuery.text) {
+         if (searchQuery.text.isBlank()) emptyList()
+         else places.map { it.name }.filter { it.lowercase().contains(searchQuery.text.lowercase()) }.distinct().take(5)
+     }
 
-    val filteredPlaces = remember(places, selectedCategoryState, searchQuery.text) {
-        if (selectedCategoryState == "Все" && searchQuery.text.isBlank()) {
-            return@remember places
-        }
-
-        var filtered = places
-
-        if (searchQuery.text.isNotBlank()) {
-            val query = searchQuery.text.lowercase()
-            filtered = filtered.filter { place ->
-                place.name.lowercase().contains(query)
-            }
-        }
-
-        if (selectedCategoryState != "Все") {
-            filtered = filtered.filter { it.category == selectedCategoryState }
-        }
-
-        filtered
-    }
-
-    val searchSuggestions = remember(places, searchQuery.text) {
-        if (searchQuery.text.isBlank()) {
-            emptyList()
-        } else {
-            places
-                .map { it.name }
-                .filter { it.lowercase().contains(searchQuery.text.lowercase()) }
-                .distinct()
-                .take(5)
-        }
-    }
-
-    fun handleSuggestionClick(suggestion: String) {
-        searchQuery = TextFieldValue(suggestion)
-
-        val foundPlace = places.firstOrNull { it.name == suggestion }
-        if (foundPlace != null) {
-            val placesInSameCategory = places.filter {
-                it.category == foundPlace.category &&
-                        it.name.lowercase().contains(suggestion.lowercase())
-            }
-
-            if (placesInSameCategory.size == 1) {
-                selectedCategoryState = foundPlace.category
-                onCategorySelected(foundPlace.category)
-            } else {
-                selectedCategoryState = "Все"
-                onCategorySelected("Все")
-            }
-        }
-    }
-
+     val gridItems = remember(filteredPlaces) {
+         buildList {
+             add(GridItem.AICard)
+             addAll(filteredPlaces.map { GridItem.PlaceItem(it) })
+         }
+     }
     BackHandler() {
         onBackClick()
     }
@@ -187,12 +151,9 @@ fun AddToRouteScreen(
             ) {
                 SearchBar(
                     searchQuery = searchQuery,
-                    onSearchQueryChanged = { newValue ->
-                        searchQuery = newValue
-                    },
+                    onSearchQueryChanged = onSearchQueryChanged,
                     onClearClick = {
-                        searchQuery = TextFieldValue()
-                        selectedCategoryState = "Все"
+                        onSearchQueryChanged(TextFieldValue())
                         onCategorySelected("Все")
                         focusManager.clearFocus()
                     },
@@ -207,7 +168,14 @@ fun AddToRouteScreen(
                 if (searchQuery.text.isNotBlank() && searchSuggestions.isNotEmpty()) {
                     SearchSuggestions(
                         suggestions = searchSuggestions,
-                        onSuggestionClick = ::handleSuggestionClick,
+                        onSuggestionClick = { suggestion ->
+                            onSearchQueryChanged(TextFieldValue(suggestion))
+                            val foundPlace = places.firstOrNull { it.name == suggestion }
+                            if (foundPlace != null) {
+                                onCategorySelected(foundPlace.category)
+                            }
+                            focusManager.clearFocus()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -216,15 +184,14 @@ fun AddToRouteScreen(
 
                 CategoryFilter(
                     categories = allCategories,
-                    selectedCategory = selectedCategoryState,
+                    selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
-                        selectedCategoryState = category
                         onCategorySelected(category)
                     },
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                if (searchQuery.text.isNotBlank() || selectedCategoryState != "Все") {
+                if (searchQuery.text.isNotBlank() || selectedCategory != "Все") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -301,7 +268,8 @@ fun AddToRouteScreen(
                             if (searchQuery.text.isNotBlank()) {
                                 TextButton(
                                     onClick = {
-                                        searchQuery = TextFieldValue()
+                                        onSearchQueryChanged(TextFieldValue())
+                                        onCategorySelected("Все")
                                         focusManager.clearFocus()
                                     }
                                 ) {
@@ -323,8 +291,7 @@ fun AddToRouteScreen(
                             if (searchQuery.text.isNotBlank() && selectedCategoryState != "Все") {
                                 TextButton(
                                     onClick = {
-                                        searchQuery = TextFieldValue()
-                                        selectedCategoryState = "Все"
+                                        onSearchQueryChanged(TextFieldValue())
                                         onCategorySelected("Все")
                                         focusManager.clearFocus()
                                     }
@@ -346,17 +313,45 @@ fun AddToRouteScreen(
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(
-                            items = filteredPlaces,
-                            key = { it.id }
-                        ) { place ->
-                            val isSelected = place.id in selectedPlacesIds
+                            items = gridItems,
+                            key = {
+                                when (it) {
+                                    is GridItem.AICard -> "ai_card"
+                                    is GridItem.PlaceItem -> it.place.id
+                                    else -> it.hashCode().toString()
+                                }
+                            }
+                        ) { item ->
+                            when (item) {
 
-                            PlaceCard(
-                                place = place,
-                                isSelected = isSelected,
-                                onToggleSelect = { toggled -> onTogglePlace(place.id, toggled) },
-                                onPlaceClick = { onPlaceClick(place, isSelected) }
-                            )
+                                is GridItem.AICard -> {
+                                    AIPreferenceCard(
+                                        onClick = onAIClick,
+                                        isOnline = isOnline
+                                    )
+                                }
+
+                                is GridItem.PlaceItem -> {
+                                    val place = item.place
+                                    val isSelected = place.id in selectedPlacesIds
+
+                                    PlaceCard(
+                                        place = place,
+                                        isSelected = isSelected,
+                                        onToggleSelect = { toggled ->
+                                            onTogglePlace(place.id, toggled)
+                                        },
+                                        onPlaceClick = {
+                                            onPlaceClick(place, isSelected)
+                                        }
+                                    )
+                                }
+
+                                else -> {
+                                    Unit
+                                }
+
+                            }
                         }
                     }
                 }
@@ -364,7 +359,139 @@ fun AddToRouteScreen(
         }
     }
 }
+@Composable
+fun AIPreferenceCard(
+    onClick: () -> Unit,
+    isOnline: Boolean
+) {
+    val infinite = rememberInfiniteTransition(label = "ai")
 
+    val glow by infinite.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    val scale by infinite.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.02f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.8f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (isOnline) 1f else 0.55f
+            },
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOnline)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = glow * 0.35f),
+                            Color.Transparent
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                TypewriterText(
+                    text = if (isOnline) " AI создаст маршрут" else "AI недоступен",
+                    isActive = isOnline
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = if (isOnline)
+                        "Нажми и получи маршрут"
+                    else
+                        "Нет интернета",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+            if (!isOnline) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .size(30.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "!",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+@Composable
+fun TypewriterText(
+    text: String,
+    isActive: Boolean
+) {
+    var visibleText by remember(text, isActive) { mutableStateOf("") }
+
+    LaunchedEffect(text, isActive) {
+        if (!isActive) {
+            visibleText = text
+            return@LaunchedEffect
+        }
+
+        visibleText = ""
+
+        text.forEachIndexed { index, _ ->
+            visibleText = text.take(index + 1)
+            kotlinx.coroutines.delay(45)
+        }
+    }
+
+    Text(
+        text = visibleText,
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBar(
@@ -721,32 +848,4 @@ fun SimpleAdaptiveText(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier.padding(bottom = 4.dp)
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewAddToRouteScreen() {
-    val samplePlaces = listOf(
-        Place("1", "Эрмитаж", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("2", "Петропавловская крепость", "адрес", "10:00-18:00", "История", "описание", ""),
-        Place("3", "Исаакиевский собор", "адрес", "10:00-18:00", "Архитектура", "описание", ""),
-        Place("4", "Кунсткамера", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("5", "Русский музей", "адрес", "10:00-18:00", "Музей", "описание", ""),
-        Place("6", "Мариинский театр", "адрес", "10:00-18:00", "Театр", "описание", "")
-    )
-    var selectedIds by remember { mutableStateOf(setOf("1", "3")) }
-    MaterialTheme {
-        AddToRouteScreen(
-            places = samplePlaces,
-            onBackClick = {},
-            onSaveTrip = { selectedPlaces: List<Place> -> },
-            onPlaceClick = { place, isSelected -> },
-            selectedPlacesIds = setOf("1", "3"),
-            onTogglePlace = { placeId, toggled ->
-                selectedIds = if (toggled) selectedIds + placeId else selectedIds - placeId
-            },
-            selectedCategory = "Музей",
-            onCategorySelected = {}
-        )
-    }
 }

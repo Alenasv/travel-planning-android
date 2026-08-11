@@ -46,13 +46,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val showDeleteDialog by viewModel.showDeleteDialog.collectAsStateWithLifecycle()
-                    var allPlacesLoaded by remember { mutableStateOf(false) }
                     val trips by viewModel.trips.collectAsStateWithLifecycle()
 
-                    val isScreenReady = trips.isNotEmpty() && allPlacesLoaded
+                    val allPlaces by viewModel.allPlaces.collectAsStateWithLifecycle()
+                    val isLoadingState by viewModel.isLoadingState.collectAsStateWithLifecycle()
+
                     LaunchedEffect(Unit) {
-                        downloadJson(applicationContext, "all_places.json")
-                        allPlacesLoaded = true
+                        viewModel.loadInitialData(applicationContext)
                     }
                     val handleDelete: (List<Long>) -> Unit = { ids ->
                         viewModel.requestDeleteTrips(ids)
@@ -106,8 +106,9 @@ class MainActivity : ComponentActivity() {
                             startActivity(intent)
                             overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
-                        repository = repository,
-                        tripsOverride = trips,
+                        trips = trips,
+                        allPlaces = allPlaces,
+                        isLoadingState = isLoadingState,
                         onDeleteTrips = handleDelete,
                         onSelectionResetCallback = { callback ->
                             onSelectionReset = callback

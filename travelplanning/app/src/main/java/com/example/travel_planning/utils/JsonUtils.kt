@@ -1,6 +1,5 @@
 package com.example.travel_planning.utils
 
-import Place
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -22,6 +21,7 @@ inline fun <reified T> loadJsonListFromAssets(context: Context, fileName: String
         emptyList()
     }
 }
+
 fun loadJsonListFromInternal(context: Context, filename: String): List<Place> {
 
     val file = File(context.filesDir, filename)

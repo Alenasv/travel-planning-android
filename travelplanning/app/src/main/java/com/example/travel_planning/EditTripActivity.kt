@@ -1,27 +1,31 @@
 package com.example.travel_planning
 
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.UnsavedTripDialog
-import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
+import com.example.travel_planning.view_model.SelectedPlacesHolder
 import com.example.travel_planning.view_model.TripEditViewModel
 import com.example.travel_planning.view_model.TripEditViewModelFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EditTripActivity : ComponentActivity() {
 
@@ -37,12 +41,9 @@ class EditTripActivity : ComponentActivity() {
     ) { result ->
         if (result.resultCode == RESULT_OK) {
             val selectedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
-                ?: return@registerForActivityResult
-
-            val allPlaces: List<Place> =
-                loadJsonListFromInternal(this, "all_places.json")
-            val updatedPlaces = allPlaces.filter { it.id in selectedIds }
-            viewModel.setPlaces(updatedPlaces)
+            if (selectedIds != null) {
+                viewModel.handleSelectedPlaces(this, selectedIds)
+            }
         }
     }
 
@@ -62,12 +63,8 @@ class EditTripActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        tripId = intent.getLongExtra("TRIP_ID", -1)
-
-        if (tripId == -1L) {
-            finish()
-            return
-        }
+        val mode = intent.getStringExtra("MODE") ?: "EDIT"
+        tripId = intent.getLongExtra("TRIP_ID", -1L)
 
         val db = AppDatabase.getDatabase(applicationContext)
         repository = TripRepository(db)
@@ -77,21 +74,16 @@ class EditTripActivity : ComponentActivity() {
             TripEditViewModelFactory(repository)
         )[TripEditViewModel::class.java]
 
-        lifecycleScope.launch {
-            viewModel.initEditMode(tripId)
-        }
+        viewModel.loadData(mode, tripId)
 
         setContent {
             TravelPlanningTheme {
-                Surface {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     val trip by viewModel.tripState.collectAsStateWithLifecycle()
-
-                    LaunchedEffect(Unit) {
-                    }
 
                     TripEditScreen(
                         trip = trip,
-                        isCreateMode = false,
+                        isCreateMode = (mode == "AI"),
                         showGeneratedTitle = false,
                         defaultTitle = "",
                         onTitleChange = { viewModel.updateTripTitle(it) },
@@ -106,7 +98,7 @@ class EditTripActivity : ComponentActivity() {
                         },
                         onSaveTrip = {
                             lifecycleScope.launch {
-                                viewModel.saveEdit()
+                                viewModel.saveTrip(mode)
                                 intentToMainActivity()
                             }
                         },
@@ -164,7 +156,7 @@ class EditTripActivity : ComponentActivity() {
                             onSave = {
                                 showUnsavedDialog.value = false
                                 lifecycleScope.launch {
-                                    viewModel.saveEdit()
+                                    viewModel.saveTrip(mode)
                                     intentToMainActivity()
                                 }
                             },

@@ -12,5 +12,7 @@ data class PlaceEntity(
     val address: String,
     val work_time: String?,
     val description: String?,
-    val imageFilename: String?
+    val imageFilename: String?,
+    val tags: String?
+
 )
