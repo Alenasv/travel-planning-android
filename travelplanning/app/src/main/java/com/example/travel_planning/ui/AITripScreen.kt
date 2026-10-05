@@ -196,22 +196,26 @@ fun AITripScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            uiState.clusters.forEach { cluster ->
-                                val isSelected = cluster.name in selectedInterests
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        if (isSelected) selectedInterests.remove(cluster.name)
-                                        else selectedInterests.add(cluster.name)
-                                    },
-                                    label = { Text(cluster.name) },
-                                    leadingIcon = if (isSelected) {
-                                        { Icon(Icons.Default.Check, modifier = Modifier.size(16.dp), contentDescription = null) }
-                                    } else null,
-                                    shape = RoundedCornerShape(8.dp),
-                                    enabled = !isGenerating
-                                )
-                            }
+                            uiState.clusters
+                                .filter { cluster ->
+                                    cluster.name == "Интересное" || !cluster.name.contains("интересное", ignoreCase = true)
+                                }
+                                .forEach { cluster ->
+                                    val isSelected = cluster.name in selectedInterests
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (isSelected) selectedInterests.remove(cluster.name)
+                                            else selectedInterests.add(cluster.name)
+                                        },
+                                        label = { Text(cluster.name) },
+                                        leadingIcon = if (isSelected) {
+                                            { Icon(Icons.Default.Check, modifier = Modifier.size(16.dp), contentDescription = null) }
+                                        } else null,
+                                        shape = RoundedCornerShape(8.dp),
+                                        enabled = !isGenerating
+                                    )
+                                }
                         }
                     }
 

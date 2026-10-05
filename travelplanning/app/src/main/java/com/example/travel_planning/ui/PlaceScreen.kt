@@ -715,7 +715,10 @@ fun PlaceCard(
     val elevation = if (isSelected) 12.dp else 6.dp
     val context = LocalContext.current
 
-    val safeFileName = place.image_filename.hashCode().toString() + ".jpg"
+    val safeFileName =
+        (place.image_filename ?: "no_image")
+            .hashCode()
+            .toString() + ".jpg"
     val localImageFile = File(context.cacheDir, safeFileName)
 
     var imageModel by remember { mutableStateOf<Any>(

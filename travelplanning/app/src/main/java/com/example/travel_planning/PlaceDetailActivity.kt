@@ -41,6 +41,12 @@ class PlaceDetailActivity : ComponentActivity() {
                         },
                         onAddToRouteClick = {
                             viewModel.toggleRouteSelection()
+
+                            handleBackAction(
+                                placeId = placeId,
+                                isSelected = viewModel.isSelected.value,
+                                mode = mode
+                            )
                         }
                     )
                 }
