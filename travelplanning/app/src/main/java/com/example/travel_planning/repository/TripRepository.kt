@@ -1,18 +1,25 @@
 package com.example.travel_planning.repository
 
-import Place
 import com.example.travel_planning.db.AppDatabase
+import com.example.travel_planning.db.dao.PlaceDao
+import com.example.travel_planning.db.dao.TripDao
 import com.example.travel_planning.db.entities.*
 import com.example.travel_planning.ui.Trip
+import com.example.travel_planning.utils.Place
+import com.example.travel_planning.utils.toTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-class TripRepository(private val db: AppDatabase) {
+import javax.inject.Inject
+import javax.inject.Singleton
 
-    private val tripDao = db.tripDao()
-    private val placeDao = db.placeDao()
+@Singleton
+class TripRepository @Inject constructor(
+    private val tripDao: TripDao,
+    private val placeDao: PlaceDao
+) {
 
     suspend fun createTrip(name: String, date: String? = null, notes: String? = null): Long {
         val trip = TripEntity(name = name, date = date, notes = notes)
@@ -102,7 +109,8 @@ class TripRepository(private val db: AppDatabase) {
                         work_time = placeEntity.work_time ?: "",
                         category = placeEntity.category,
                         description = placeEntity.description ?: "",
-                        image_filename = placeEntity.imageFilename ?: ""
+                        image_filename = placeEntity.imageFilename ?: "",
+                        tags = placeEntity.tags.toTags()
                     )
                 }
             )

@@ -1,12 +1,12 @@
 package com.example.travel_planning
 
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModelProvider
@@ -16,16 +16,18 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
-import com.example.travel_planning.view_model.TripEditViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class EditTripFromCategory : ComponentActivity() {
+    private val viewModel: TripEditViewModel by viewModels()
 
-    private lateinit var repository: TripRepository
-    private lateinit var viewModel: TripEditViewModel
+
     private var selectedPlaceIds = listOf<String>()
     private val showUnsavedDialog = mutableStateOf(false)
 
@@ -33,20 +35,10 @@ class EditTripFromCategory : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         selectedPlaceIds = intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: emptyList()
-        repository = TripRepository(AppDatabase.getDatabase(applicationContext))
 
-        viewModel = ViewModelProvider(
-            this,
-            TripEditViewModelFactory(repository)
-        )[TripEditViewModel::class.java]
 
-        lifecycleScope.launch {
-            val allPlaces = loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
 
-            val selectedPlaces = allPlaces.filter { it.id in selectedPlaceIds }
-
-            viewModel.initFromSelectedPlaces(selectedPlaceIds, selectedPlaces)
-        }
+        viewModel.handleSelectedPlaces(this, selectedPlaceIds)
 
         setContent {
             TravelPlanningTheme {
@@ -59,20 +51,10 @@ class EditTripFromCategory : ComponentActivity() {
                         ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         if (result.resultCode == RESULT_OK && result.data != null) {
-                            val placeId = result.data!!.getStringExtra("PLACE_ID")
-                                ?: return@rememberLauncherForActivityResult
+                            val placeId = result.data!!.getStringExtra("PLACE_ID") ?: return@rememberLauncherForActivityResult
                             val isSelected = result.data!!.getBooleanExtra("IS_SELECTED", true)
 
-                            if (!isSelected) {
-                                viewModel.removePlace(placeId)
-                            } else {
-                                val allPlaces: List<Place> =
-                                    loadJsonListFromInternal(this@EditTripFromCategory, "all_places.json")
-                                val place = allPlaces.find { it.id.toString() == placeId }
-                                if (place != null) {
-                                    viewModel.addPlace(place)
-                                }
-                            }
+                            viewModel.handlePlaceDetailResult(this@EditTripFromCategory, placeId, isSelected)
                         }
                     }
 

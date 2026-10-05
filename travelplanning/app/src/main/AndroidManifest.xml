@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
+        android:name=".TravelPlanningApp"
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -27,6 +30,9 @@
         </activity>
         <activity
             android:name=".AddTripActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AITripActivity"
             android:exported="false" />
         <activity
             android:name=".AddPlaceActivity"

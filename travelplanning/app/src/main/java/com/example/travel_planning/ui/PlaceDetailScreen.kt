@@ -1,9 +1,7 @@
 package com.example.travel_planning.ui
 
-import Place
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,21 +16,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.travel_planning.utils.Place
 import java.io.File
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceDetailScreen(
     place: Place?,
-    onBackClick: () -> Unit,
     isSelected: Boolean,
-    onAddToRoute: (Place) -> Unit
+    imageFile: File?,
+    onBackClick: () -> Unit,
+    onAddToRouteClick: () -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -41,15 +40,17 @@ fun PlaceDetailScreen(
             listState.firstVisibleItemScrollOffset < 10 || listState.firstVisibleItemIndex == 0
         }
     }
+
     var showEnterAnimation by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
         showEnterAnimation = true
     }
-    val context = LocalContext.current
-    BackHandler() {
+
+    BackHandler {
         onBackClick()
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,19 +72,6 @@ fun PlaceDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (place != null) {
-                val context = LocalContext.current
-
-                val localFile = File(context.filesDir, place.image_filename)
-                var imageFile by remember { mutableStateOf<File?>(if (localFile.exists()) localFile else null) }
-
-                LaunchedEffect(place.image_filename) {
-                    if (imageFile == null && place.image_filename.isNotEmpty()) {
-                        val downloaded = com.example.travel_planning.network.downloadImage(context, place.image_filename)
-                        if (downloaded != null) {
-                            imageFile = downloaded
-                        }
-                    }
-                }
                 val imageModel = imageFile ?: "https://via.placeholder.com/600x400.png?text=No+Image"
 
                 LazyColumn(
@@ -94,7 +82,6 @@ fun PlaceDetailScreen(
                         .padding(paddingValues)
                 ) {
                     item {
-
                         AsyncImage(
                             model = imageModel,
                             contentDescription = place.name,
@@ -107,12 +94,14 @@ fun PlaceDetailScreen(
 
                     item {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(place.name,
+                            Text(
+                                text = place.name,
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
-                            Text(place.category,
+                            Text(
+                                text = place.category,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium,
@@ -143,23 +132,27 @@ fun PlaceDetailScreen(
                                 }
                             }
 
-                            Divider(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
                             )
 
-                            Text("Описание",
+                            Text(
+                                text = "Описание",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
-                            Text(place.description,
+                            Text(
+                                text = place.description,
                                 style = MaterialTheme.typography.bodyMedium,
                                 lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4
                             )
                         }
                     }
                 }
+
                 AnimatedVisibility(
                     visible = showEnterAnimation && showScrollButton,
                     enter = androidx.compose.animation.fadeIn(
@@ -177,30 +170,27 @@ fun PlaceDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(70.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surface,
-                            )
+                            .background(color = MaterialTheme.colorScheme.surface)
                             .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
                         OutlinedButton(
-                            onClick = { onAddToRoute(place) },
+                            onClick = onAddToRouteClick,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(45.dp),
                             shape = RoundedCornerShape(35.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Text(
-
                                 text = if (isSelected) "Убрать из маршрута" else "Добавить в маршрут",
-                                style = MaterialTheme.typography.titleMedium)
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
                     }
                 }
-
             } else {
                 Box(
                     modifier = Modifier
@@ -215,35 +205,42 @@ fun PlaceDetailScreen(
     }
 }
 
-val place = Place(
+@Composable
+fun SimpleAdaptiveText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.padding(bottom = 4.dp)
+    )
+}
+
+val previewPlace = Place(
     id = "1",
     name = "Эрмитаж",
     category = "Музей",
-    address= "адрес",
-    description= "описание",
+    address = "г. Санкт-Петербург, Дворцовая наб., 34",
+    description = "Один из крупнейших и самых значительных художественных и культурно-исторических музеев России и мира.",
     image_filename = "",
-    work_time=""
+    work_time = "11:00 - 18:00",
+    tags = listOf("музеи", "история", "искусство")
 )
+
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PlaceDetailScreenPreview() {
     MaterialTheme {
         PlaceDetailScreen(
-            place = place,
+            place = previewPlace,
+            isSelected = true,
+            imageFile = null,
             onBackClick = { },
-            onAddToRoute = { },
-            isSelected = true
-        )
-    }
-}
-@Composable
-fun PlaceDetailScreenEmptyPreview() {
-    MaterialTheme {
-        PlaceDetailScreen(
-            place = null,
-            onBackClick = { },
-            onAddToRoute = { },
-            isSelected = false
+            onAddToRouteClick = { }
         )
     }
 }
