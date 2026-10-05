@@ -16,8 +16,11 @@ import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.viewmodel.AddPlaceViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AddFromTheCategory : ComponentActivity() {
+
 
     private val viewModel: AddPlaceViewModel by viewModels()
 

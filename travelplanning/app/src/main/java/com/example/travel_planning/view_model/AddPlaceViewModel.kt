@@ -3,8 +3,9 @@ package com.example.travel_planning.viewmodel
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.travel_planning.network.ApiClient
+import com.example.travel_planning.network.Api
 import com.example.travel_planning.utils.Place
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,8 +13,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AddPlaceViewModel : ViewModel() {
+@HiltViewModel
+class AddPlaceViewModel @Inject constructor(
+    private val api: Api
+) : ViewModel() {
 
     private val _selectedPlaceIds = MutableStateFlow<Set<String>>(emptySet())
     val selectedPlaceIds: StateFlow<Set<String>> = _selectedPlaceIds.asStateFlow()
@@ -74,7 +79,7 @@ class AddPlaceViewModel : ViewModel() {
     fun checkConnection() {
         viewModelScope.launch {
             _isOnline.value = try {
-                ApiClient.api.ping()
+                api.ping()
                 true
             } catch (e: Exception) {
                 false

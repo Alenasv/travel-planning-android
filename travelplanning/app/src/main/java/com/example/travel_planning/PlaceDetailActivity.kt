@@ -11,8 +11,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.travel_planning.ui.PlaceDetailScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.viewmodel.PlaceDetailViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class PlaceDetailActivity : ComponentActivity() {
+
 
     private val viewModel: PlaceDetailViewModel by viewModels()
 

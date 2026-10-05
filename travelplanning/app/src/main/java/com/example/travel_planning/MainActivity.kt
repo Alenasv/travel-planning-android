@@ -9,35 +9,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.example.travel_planning.db.AppDatabase
-import com.example.travel_planning.network.downloadJson
-import com.example.travel_planning.repository.TripRepository
+
 import com.example.travel_planning.ui.MainScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
 import com.example.travel_planning.view_model.MainViewModel
-import com.example.travel_planning.view_model.MainViewModelFactory
 import kotlinx.coroutines.launch
+import androidx.activity.viewModels
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    private lateinit var repository: TripRepository
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MainViewModel by viewModels()
     private var onSelectionReset: (() -> Unit)? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val db = AppDatabase.getDatabase(applicationContext)
-        repository = TripRepository(db)
-
-        viewModel = ViewModelProvider(
-            this,
-            MainViewModelFactory(repository)
-        )[MainViewModel::class.java]
 
         setContent {
             TravelPlanningTheme {
@@ -52,7 +42,7 @@ class MainActivity : ComponentActivity() {
                     val isLoadingState by viewModel.isLoadingState.collectAsStateWithLifecycle()
 
                     LaunchedEffect(Unit) {
-                        viewModel.loadInitialData(applicationContext)
+                        viewModel.loadInitialData()
                     }
                     val handleDelete: (List<Long>) -> Unit = { ids ->
                         viewModel.requestDeleteTrips(ids)

@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModelProvider
@@ -20,26 +21,20 @@ import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
-import com.example.travel_planning.view_model.TripEditViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class AddTripActivity : ComponentActivity() {
+    private val viewModel: TripEditViewModel by viewModels()
 
-    private lateinit var repository: TripRepository
-    private lateinit var viewModel: TripEditViewModel
+
     private lateinit var addPlaceLauncher: ActivityResultLauncher<Intent>
     private lateinit var placeDetailLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = AppDatabase.getDatabase(applicationContext)
-        repository = TripRepository(db)
-
-        viewModel = ViewModelProvider(
-            this,
-            TripEditViewModelFactory(repository)
-        )[TripEditViewModel::class.java]
 
         setupLaunchers()
 

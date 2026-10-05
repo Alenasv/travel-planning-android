@@ -1,11 +1,10 @@
 package com.example.travel_planning.view_model
-
+import com.example.travel_planning.network.Api
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import Api
 import com.example.travel_planning.network.model.RecommendRequest
 import com.example.travel_planning.utils.ClusterDto
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -13,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface AITripUiState {
     object Loading : AITripUiState
@@ -24,7 +24,12 @@ sealed interface AITripNavigationEvent {
     object NavigateToEditTrip : AITripNavigationEvent
 }
 
-class AITripViewModel(private val api: Api) : ViewModel() {
+
+
+@HiltViewModel
+class AITripViewModel @Inject constructor(
+    private val api: Api
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AITripUiState>(AITripUiState.Loading)
     val uiState: StateFlow<AITripUiState> = _uiState.asStateFlow()
@@ -76,12 +81,6 @@ class AITripViewModel(private val api: Api) : ViewModel() {
     }
 }
 
-class AITripViewModelFactory(private val api: Api) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
-        return AITripViewModel(api) as T
-    }
-}
 object SelectedPlacesHolder {
     var places: List<com.example.travel_planning.network.model.RecommendedPlace> = emptyList()
 

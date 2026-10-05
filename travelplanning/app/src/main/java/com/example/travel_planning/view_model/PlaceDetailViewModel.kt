@@ -6,13 +6,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.travel_planning.network.downloadImage
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
-class PlaceDetailViewModel : ViewModel() {
+@HiltViewModel
+class PlaceDetailViewModel @Inject constructor() : ViewModel() {
 
     private val _currentPlace = MutableStateFlow<Place?>(null)
     val currentPlace: StateFlow<Place?> = _currentPlace.asStateFlow()

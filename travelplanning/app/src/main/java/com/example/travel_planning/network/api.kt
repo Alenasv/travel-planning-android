@@ -1,3 +1,4 @@
+package com.example.travel_planning.network
 import com.example.travel_planning.network.model.RecommendRequest
 import com.example.travel_planning.network.model.RecommendResponse
 import com.example.travel_planning.utils.ClustersResponse

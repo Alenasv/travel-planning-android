@@ -1,6 +1,5 @@
 package com.example.travel_planning.ui
 
-import Api
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode

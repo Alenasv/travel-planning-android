@@ -5,32 +5,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.example.travel_planning.db.AppDatabase
-import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.DeleteConfirmationDialog
-import com.example.travel_planning.utils.Place
+
 import com.example.travel_planning.utils.UnsavedTripDialog
-import com.example.travel_planning.utils.loadJsonListFromInternal
-import com.example.travel_planning.view_model.SelectedPlacesHolder
 import com.example.travel_planning.view_model.TripEditViewModel
-import com.example.travel_planning.view_model.TripEditViewModelFactory
-import kotlinx.coroutines.Dispatchers
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
+@AndroidEntryPoint
 class EditTripActivity : ComponentActivity() {
+    private val viewModel: TripEditViewModel by viewModels()
 
-    private lateinit var repository: TripRepository
-    private lateinit var viewModel: TripEditViewModel
     private var tripId: Long = -1
 
     private val showDeleteDialog = mutableStateOf(false)
@@ -66,13 +60,6 @@ class EditTripActivity : ComponentActivity() {
         val mode = intent.getStringExtra("MODE") ?: "EDIT"
         tripId = intent.getLongExtra("TRIP_ID", -1L)
 
-        val db = AppDatabase.getDatabase(applicationContext)
-        repository = TripRepository(db)
-
-        viewModel = ViewModelProvider(
-            this,
-            TripEditViewModelFactory(repository)
-        )[TripEditViewModel::class.java]
 
         viewModel.loadData(mode, tripId)
 
@@ -140,7 +127,7 @@ class EditTripActivity : ComponentActivity() {
                             title = "Вы уверены, что хотите удалить?",
                             onConfirm = {
                                 lifecycleScope.launch {
-                                    repository.deleteTripById(tripId)
+                                    viewModel.deleteTrip(tripId)
                                     showDeleteDialog.value = false
                                     intentToMainActivity()
                                 }

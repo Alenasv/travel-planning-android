@@ -8,19 +8,17 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.example.travel_planning.network.ApiClient
 import com.example.travel_planning.ui.AITripScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.view_model.AITripNavigationEvent
 import com.example.travel_planning.view_model.AITripViewModel
-import com.example.travel_planning.view_model.AITripViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class AITripActivity : ComponentActivity() {
+    private val viewModel: AITripViewModel by viewModels()
 
-    private val viewModel: AITripViewModel by viewModels {
-        AITripViewModelFactory(ApiClient.api)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

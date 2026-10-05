@@ -1,7 +1,6 @@
 package com.example.travel_planning.view_model
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
@@ -11,10 +10,20 @@ import kotlinx.coroutines.flow.StateFlow
 import java.net.URLEncoder
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.travel_planning.network.Api
+import android.content.Context
+import com.example.travel_planning.network.downloadJson
+import javax.inject.Inject
 
-class MainViewModel(
-    private val repository: TripRepository
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val repository: TripRepository,
+    private val api: Api,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
+
 
     val trips: StateFlow<List<TripEntity>> =
         repository.getAllTrips()
@@ -29,7 +38,7 @@ class MainViewModel(
     private val _isLoadingState = MutableStateFlow(_allPlaces.value.isEmpty())
     val isLoadingState: StateFlow<Boolean> = _isLoadingState
 
-    fun loadInitialData(context: android.content.Context) {
+    fun loadInitialData() {
         viewModelScope.launch {
             if (_allPlaces.value.isNotEmpty()) {
                 _isLoadingState.value = false
@@ -44,7 +53,7 @@ class MainViewModel(
                     }
                 _allPlaces.value = places
 
-                val success = com.example.travel_planning.network.downloadJson(context, "all_places.json")
+                val success = downloadJson(api, context, "all_places.json")
                 if (success) {
                     places = com.example.travel_planning.utils.loadJsonListFromInternal(context, "all_places.json")
                     _allPlaces.value = places
@@ -112,13 +121,4 @@ class MainViewModel(
         }
     }
 
-}
-
-class MainViewModelFactory(
-    private val repository: TripRepository
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
-        return MainViewModel(repository) as T
-    }
 }
