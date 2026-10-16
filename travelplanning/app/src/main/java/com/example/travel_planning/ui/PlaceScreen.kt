@@ -43,6 +43,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import com.example.travel_planning.R
 import com.example.travel_planning.network.downloadImage
 import com.example.travel_planning.utils.Place
 import java.io.File
@@ -721,12 +722,13 @@ fun PlaceCard(
             .toString() + ".jpg"
     val localImageFile = File(context.cacheDir, safeFileName)
 
-    var imageModel by remember { mutableStateOf<Any>(
-        "http://45.150.11.208:8000/static/${place.image_filename.removePrefix("data/")}"
+    var imageModel by remember(place.image_filename) { mutableStateOf<Any>(
+        place.image_filename?.let { "http://45.150.11.208:8000/static/${it.removePrefix("data/")}" }
+            ?: R.drawable.ic_launcher_background//заменить на заглушку для  категории
     ) }
 
     LaunchedEffect(place.image_filename) {
-        if (!localImageFile.exists() && place.image_filename.isNotEmpty()) {
+        if (!localImageFile.exists() && !place.image_filename.isNullOrEmpty()) {
             val downloadedFile = downloadImage(context, place.image_filename)
             if (downloadedFile != null) {
                 imageModel = downloadedFile

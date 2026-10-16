@@ -370,7 +370,7 @@ fun PlaceListItem(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Text(
-                    text = place.work_time,
+                    text = place.work_time ?: "—",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium
                 )

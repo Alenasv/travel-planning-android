@@ -38,13 +38,17 @@ class PlaceDetailViewModel @Inject constructor() : ViewModel() {
         _currentPlace.value = place
 
         place?.let {
-            val localFile = File(context.filesDir, it.image_filename)
-            if (localFile.exists()) {
-                _imageFile.value = localFile
-            } else {
-                downloadPlaceImage(context, it.image_filename)
+            val filename = it.image_filename
+            if (filename != null) {
+                val localFile = File(context.filesDir, filename)
+                if (localFile.exists()) {
+                    _imageFile.value = localFile
+                } else {
+                    downloadPlaceImage(context, filename)
+                }
             }
         }
+
     }
 
     private fun downloadPlaceImage(context: Context, filename: String) {

@@ -128,7 +128,7 @@ fun PlaceDetailScreen(
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text("Время работы", style = MaterialTheme.typography.bodySmall)
-                                    Text(place.work_time, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                    Text(place.work_time ?: "Время работы не указано", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                                 }
                             }
 
@@ -145,7 +145,7 @@ fun PlaceDetailScreen(
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                             Text(
-                                text = place.description,
+                                text = place.description ?: "Описание отсутствует",
                                 style = MaterialTheme.typography.bodyMedium,
                                 lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4
                             )
