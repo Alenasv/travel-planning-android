@@ -12,9 +12,9 @@ import retrofit2.awaitResponse
 import okhttp3.Request
 import java.io.FileOutputStream
 
-suspend fun downloadJson(context: Context, filename: String): Boolean {
+suspend fun downloadJson(api: Api, context: Context, filename: String): Boolean {
     return try {
-        val response: Response<ResponseBody> = ApiClient.api.getJson(filename).awaitResponse()
+        val response: Response<ResponseBody> = api.getJson(filename).awaitResponse()
         if (response.isSuccessful) {
             val body = response.body()?.string() ?: return false
             val file = File(context.filesDir, filename)

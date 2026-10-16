@@ -1,12 +1,12 @@
 package com.example.travel_planning
 
-import Place
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModelProvider
@@ -16,30 +16,25 @@ import com.example.travel_planning.db.AppDatabase
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
-import com.example.travel_planning.view_model.TripEditViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class AddTripActivity : ComponentActivity() {
+    private val viewModel: TripEditViewModel by viewModels()
 
-    private lateinit var repository: TripRepository
-    private lateinit var viewModel: TripEditViewModel
+
     private lateinit var addPlaceLauncher: ActivityResultLauncher<Intent>
     private lateinit var placeDetailLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = AppDatabase.getDatabase(applicationContext)
-        repository = TripRepository(db)
-
-        viewModel = ViewModelProvider(
-            this,
-            TripEditViewModelFactory(repository)
-        )[TripEditViewModel::class.java]
 
         setupLaunchers()
 
@@ -131,14 +126,10 @@ class AddTripActivity : ComponentActivity() {
         ) { result ->
             if (result.resultCode == RESULT_OK) {
                 val updatedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
-                    ?: return@registerForActivityResult
-
-                val allPlaces: List<Place> =
-                    loadJsonListFromInternal(this, "all_places.json")
-                val updatedPlaces = allPlaces.filter { it.id in updatedIds }
-
-                viewModel.setPlaces(updatedPlaces)
-                viewModel.onReturnedFromChild()
+                if (updatedIds != null) {
+                    viewModel.handleSelectedPlaces(this, updatedIds)
+                    viewModel.onReturnedFromChild()
+                }
             }
         }
 

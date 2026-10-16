@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.hilt.android)
     kotlin("kapt")
 }
 
@@ -43,15 +45,15 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
-    }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+kapt {
+    correctErrorTypes = true
 }
 
 dependencies {
@@ -70,11 +72,13 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.coil)
-
+    implementation(libs.logging.interceptor)
+    implementation(libs.androidx.foundation)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
-
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
     implementation(libs.androidx.lifecycle.runtime)
     implementation(libs.androidx.lifecycle.viewmodel)
 

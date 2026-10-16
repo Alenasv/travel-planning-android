@@ -1,6 +1,5 @@
 package com.example.travel_planning.ui
 
-import Place
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -89,6 +88,7 @@ import com.example.travel_planning.utils.AnimatedListItem
 import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.network.downloadImage
 import com.example.travel_planning.network.downloadJson
+import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import java.io.File
 
@@ -106,24 +106,21 @@ data class GalleryItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    trips: List<TripEntity>,
+    allPlaces: List<Place>,
+    isLoadingState: Boolean,
     onAddTripClick: () -> Unit,
     onGalleryItemClick: (String) -> Unit,
-    repository: TripRepository? = null,
-    tripsOverride: List<TripEntity>? = null,
     onEditTripClick: (Long) -> Unit,
     onShareTripClick: (Long) -> Unit,
     onDeleteTrips: (List<Long>) -> Unit,
     onSelectionResetCallback: ((() -> Unit) -> Unit)? = null
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val trips: List<TripEntity> = repository?.getAllTrips()
-        ?.collectAsState(initial = emptyList())
-        ?.value ?: tripsOverride ?: emptyList()
-
-    var isLoading by remember { mutableStateOf(true) }
     var isSelectionMode by remember { mutableStateOf(false) }
     val selectedTrips = remember { mutableStateListOf<Long>() }
     var showAddFab by remember { mutableStateOf(false) }
+
+    var isLoading by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -138,69 +135,14 @@ fun MainScreen(
         showAddFab = true
     }
 
-    LaunchedEffect(tripsOverride) {
-        tripsOverride?.let {
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (tripsOverride == null) {
-            try {
-                repository?.let {
-                   // trips = it.getAllTrips()
-                }
-            } catch (e: Exception) {
-              //  trips = emptyList()
-            } finally {
-                isLoading = false
-            }
-        }
-    }
 
     BackHandler(enabled = isSelectionMode) {
         selectedTrips.clear()
         isSelectionMode = false
     }
 
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                lifecycleOwner.lifecycleScope.launch {
-                    try {
-                        repository?.let {
-                           // trips = it.getAllTrips()
-                        }
-                    } catch (e: Exception) {
-                       // trips = emptyList()
-                    }
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
     val handleDeleteClick: () -> Unit = {
         onDeleteTrips(selectedTrips.toList())
-    }
-    var allPlaces by remember { mutableStateOf<List<Place>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        allPlaces = loadJsonListFromInternal(context, "all_places.json")
-            .ifEmpty {
-                loadJsonListFromAssets(context, "all_places.json")
-            }
-
-        val success = downloadJson(context, "all_places.json")
-
-        if (success) {
-            allPlaces = loadJsonListFromInternal(context, "all_places.json")
-        }
-
-        isLoading = false
     }
 
     val galleryItems = remember(allPlaces) {
@@ -264,27 +206,28 @@ fun MainScreen(
                     )
                 }
             }
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(galleryItems) { item ->
-                            GalleryCard(
-                                item = item,
-                                onClick = {
-                                    onGalleryItemClick(item.category)
-                                }
-                            )
+                if (galleryItems.isNotEmpty()) {
+                    item {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(galleryItems) { item ->
+                                GalleryCard(
+                                    item = item,
+                                    onClick = {
+                                        onGalleryItemClick(item.category)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -330,7 +273,7 @@ fun MainScreen(
                             )
                         }
                     }
-                } else if (!isLoading) {
+                } else {
                     item {
                         Text(
                             text = "Пока нет поездок. Нажмите +, чтобы добавить",
@@ -341,10 +284,8 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                     }
-
+                }
             }
-        }
-
         }
     }
 }
@@ -718,8 +659,10 @@ fun MainScreenPreview() {
         )
 
         MainScreen(
+            trips = fakeTrips,
+            allPlaces = emptyList(),
+            isLoadingState = false,
             onAddTripClick = {},
-            tripsOverride = fakeTrips,
             onEditTripClick = {},
             onDeleteTrips = {},
             onSelectionResetCallback = null,

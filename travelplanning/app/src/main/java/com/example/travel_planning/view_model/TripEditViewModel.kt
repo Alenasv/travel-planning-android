@@ -1,17 +1,25 @@
 package com.example.travel_planning.view_model
 
-import Place
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import android.content.Context
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.Trip
+import com.example.travel_planning.utils.Place
+import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.utils.toEntity
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-class TripEditViewModel(
+@HiltViewModel
+class TripEditViewModel @Inject constructor(
     private val repository: TripRepository
 ) : ViewModel() {
 
@@ -37,6 +45,9 @@ class TripEditViewModel(
     private val _highlightTitleError = MutableStateFlow(false)
     val highlightTitleError: StateFlow<Boolean> = _highlightTitleError.asStateFlow()
 
+    suspend fun deleteTrip(tripId: Long) {
+        repository.deleteTripById(tripId)
+    }
     suspend fun initCreateMode() {
         _defaultTitle.value = repository.getNextDefaultTripName()
         _tripState.value = Trip(
@@ -63,14 +74,55 @@ class TripEditViewModel(
         originalTrip = _tripState.value
         _defaultTitle.value = _tripState.value.title
     }
-
+    suspend fun saveTrip(mode: String) {
+        if (mode == "AI") {
+            saveCreate()
+        } else {
+            saveEdit()
+        }
+    }
     fun updateTripTitle(title: String) {
         _tripState.update { it.copy(title = title) }
         if (title.isNotBlank()) {
             _highlightTitleError.value = false
         }
     }
+    fun loadData(mode: String, tripId: Long) {
+        viewModelScope.launch(Dispatchers.Default) {
+            if (mode == "AI") {
+                val aiPlaces = SelectedPlacesHolder.places.toList()
+                withContext(Dispatchers.Main) {
+                    SelectedPlacesHolder.clear()
+                }
 
+                val converted = aiPlaces.map {
+                    Place(
+                        id = it.id,
+                        name = it.name,
+                        address = it.address ?: "",
+                        work_time = it.work_time ?: "",
+                        category = it.category,
+                        description = "",
+                        image_filename = "",
+                        tags = emptyList()
+                    )
+                }
+
+                initCreateMode()
+                _tripState.update { it.copy(places = converted) }
+            } else {
+                initEditMode(tripId)
+            }
+        }
+    }
+    fun handleSelectedPlaces(context: Context, selectedIds: List<String>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val allPlaces: List<Place> = loadJsonListFromInternal(context, "all_places.json")
+            val updatedPlaces = allPlaces.filter { it.id in selectedIds }
+
+            _tripState.update { it.copy(places = updatedPlaces) }
+        }
+    }
     fun updateTripDate(date: String) {
         _tripState.update { it.copy(date = date) }
     }
@@ -78,7 +130,19 @@ class TripEditViewModel(
     fun updateTripNotes(notes: String) {
         _tripState.update { it.copy(notes = notes) }
     }
-
+    fun handlePlaceDetailResult(context: Context, placeId: String, isSelected: Boolean) {
+        if (!isSelected) {
+            removePlace(placeId)
+        } else {
+            viewModelScope.launch(Dispatchers.IO) {
+                val allPlaces: List<Place> = loadJsonListFromInternal(context, "all_places.json")
+                val place = allPlaces.find { it.id.toString() == placeId }
+                if (place != null) {
+                    addPlace(place)
+                }
+            }
+        }
+    }
     fun removePlace(placeId: String) {
         _tripState.update {
             it.copy(places = it.places.filter { place -> place.id != placeId })
@@ -200,15 +264,5 @@ class TripEditViewModel(
             places = selectedPlaces
         )
         originalTrip = null
-    }
-}
-
-class TripEditViewModelFactory(
-    private val repository: TripRepository
-) : ViewModelProvider.Factory {
-
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
-        return TripEditViewModel(repository) as T
     }
 }
