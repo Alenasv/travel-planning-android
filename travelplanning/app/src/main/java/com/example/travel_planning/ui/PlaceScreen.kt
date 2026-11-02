@@ -716,27 +716,24 @@ fun PlaceCard(
     val elevation = if (isSelected) 12.dp else 6.dp
     val context = LocalContext.current
 
-    val safeFileName =
-        (place.image_filename ?: "no_image")
-            .hashCode()
-            .toString() + ".jpg"
-    val localImageFile = File(context.cacheDir, safeFileName)
-
-    var imageModel by remember(place.image_filename) { mutableStateOf<Any>(
-        place.image_filename?.let { "http://45.150.11.208:8000/static/${it.removePrefix("data/")}" }
-            ?: R.drawable.ic_launcher_background//заменить на заглушку для  категории
-    ) }
+    var imageModel by remember(place.image_filename) {
+        mutableStateOf<Any>(
+            android.R.drawable.ic_menu_gallery
+        )
+    }
 
     LaunchedEffect(place.image_filename) {
-        if (!localImageFile.exists() && !place.image_filename.isNullOrEmpty()) {
-            val downloadedFile = downloadImage(context, place.image_filename)
-            if (downloadedFile != null) {
+        val imagePath = place.image_filename
+
+        if (!imagePath.isNullOrBlank()) {
+            val downloadedFile = downloadImage(context, imagePath)
+
+            if (downloadedFile != null && downloadedFile.exists()) {
                 imageModel = downloadedFile
             }
-        } else if (localImageFile.exists()) {
-            imageModel = localImageFile
         }
     }
+
 
     Card(
         modifier = Modifier

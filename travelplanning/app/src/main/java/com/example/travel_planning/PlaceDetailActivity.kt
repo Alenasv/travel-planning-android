@@ -26,7 +26,7 @@ class PlaceDetailActivity : ComponentActivity() {
         val isSelectedInitial = intent.getBooleanExtra("IS_SELECTED", false)
         val mode = intent.getStringExtra("MODE") ?: "VIEW"
 
-        viewModel.initData(this, placeId, isSelectedInitial)
+        viewModel.initData(this, placeId, isSelectedInitial, intent.getStringExtra("DRAFT_ID"))
 
         setContent {
             TravelPlanningTheme {

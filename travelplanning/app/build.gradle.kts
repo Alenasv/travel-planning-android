@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,11 +8,21 @@ plugins {
     kotlin("kapt")
 }
 
+val apiBaseUrl = providers.environmentVariable("TRAVEL_API_BASE_URL")
+    .orElse(providers.gradleProperty("TRAVEL_API_BASE_URL"))
+    .get().trim().let { if (it.endsWith("/")) it else "$it/" }
+val apiUri = URI(apiBaseUrl)
+require(apiUri.scheme in listOf("http", "https") && !apiUri.host.isNullOrBlank()
+        && apiUri.rawQuery == null && apiUri.rawFragment == null && apiUri.userInfo == null) {
+    "TRAVEL_API_BASE_URL must be an HTTP(S) URL without credentials, query or fragment"
+}
+
 android {
     namespace = "com.example.travel_planning"
     compileSdk = 36
 
     defaultConfig {
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
         applicationId = "com.example.travel_planning"
         minSdk = 24
         targetSdk = 36
@@ -43,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
 

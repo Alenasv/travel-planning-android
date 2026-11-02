@@ -31,7 +31,7 @@ class AddPlaceActivity : ComponentActivity() {
             intent.getStringArrayListExtra("SELECTED_PLACE_IDS") ?: arrayListOf()
 
         val allPlaces: List<Place> =
-            loadJsonListFromInternal(this, "all_places.json")
+            loadJsonListFromInternal(this, "places.json")
 
         if (savedInstanceState == null) {
             viewModel.initPlaces(allPlaces)

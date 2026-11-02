@@ -38,7 +38,7 @@ class EditTripFromCategory : ComponentActivity() {
 
 
 
-        viewModel.handleSelectedPlaces(this, selectedPlaceIds)
+        viewModel.initSelectedPlaces(this, selectedPlaceIds)
 
         setContent {
             TravelPlanningTheme {
@@ -100,6 +100,7 @@ class EditTripFromCategory : ComponentActivity() {
                                 PlaceDetailActivity::class.java
                             )
                             intent.putExtra("PLACE_ID", place.id)
+                            intent.putExtra("DRAFT_ID", viewModel.draftId)
                             intent.putExtra(
                                 "IS_SELECTED",
                                 trip.places.any { it.id == place.id }

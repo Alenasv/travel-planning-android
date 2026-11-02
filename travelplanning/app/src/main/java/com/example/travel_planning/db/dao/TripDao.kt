@@ -22,6 +22,15 @@ interface TripDao {
     @Query("SELECT * FROM trip WHERE id_ = :tripId")
     suspend fun getTripWithPlaces(tripId: Long): TripWithPlaces?
 
+    @Query("DELETE FROM trip_place_cross_ref WHERE tripId = :tripId")
+    suspend fun deleteAllCrossRefs(tripId: Long)
+
+    @Query("SELECT place.* FROM place INNER JOIN trip_place_cross_ref AS ref ON place.id_ = ref.placeId WHERE ref.tripId = :tripId ORDER BY ref.position, ref.placeId")
+    suspend fun getOrderedPlaces(tripId: Long): List<PlaceEntity>
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM trip_place_cross_ref WHERE tripId = :tripId")
+    suspend fun nextPosition(tripId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCrossRef(crossRef: TripPlaceCrossRef)
 

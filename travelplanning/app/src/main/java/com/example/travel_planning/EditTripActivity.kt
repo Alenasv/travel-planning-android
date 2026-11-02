@@ -112,6 +112,7 @@ class EditTripActivity : ComponentActivity() {
                                 PlaceDetailActivity::class.java
                             ).apply {
                                 putExtra("PLACE_ID", place.id)
+                                putExtra("DRAFT_ID", viewModel.draftId)
                                 putExtra("IS_SELECTED", true)
                                 putExtra("MODE", "SELECTION")
                             }

@@ -623,13 +623,13 @@ fun parseDateRange(dateRange: String): Pair<Long?, Long?> {
 
 fun formatDateForDisplay(timestamp: Long): String {
     val formatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    formatter.timeZone = TimeZone.getDefault()
+    formatter.timeZone = TimeZone.getTimeZone("UTC")
     return formatter.format(Date(timestamp))
 }
 
 fun formatDateForCalendar(timestamp: Long): String {
     val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-    formatter.timeZone = TimeZone.getDefault()
+    formatter.timeZone = TimeZone.getTimeZone("UTC")
     return formatter.format(Date(timestamp))
 }
 

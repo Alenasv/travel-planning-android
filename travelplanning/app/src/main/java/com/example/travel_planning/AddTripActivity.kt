@@ -18,8 +18,6 @@ import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.UnsavedTripDialog
-import com.example.travel_planning.utils.loadJsonListFromAssets
-import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.view_model.TripEditViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -89,6 +87,7 @@ class AddTripActivity : ComponentActivity() {
                                 PlaceDetailActivity::class.java
                             ).apply {
                                 putExtra("PLACE_ID", place.id)
+                                putExtra("DRAFT_ID", viewModel.draftId)
                                 putExtra("IS_SELECTED", true)
                                 putExtra("MODE", "SELECTION")
                             }

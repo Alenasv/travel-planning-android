@@ -1,37 +1,35 @@
 package com.example.travel_planning.utils
 
 import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonParser
 import java.io.File
-import java.io.InputStreamReader
-
-
-inline fun <reified T> loadJsonListFromAssets(context: Context, fileName: String): List<T> {
-    return try {
-        val inputStream = context.assets.open(fileName)
-        val reader = InputStreamReader(inputStream)
-        val type = object : TypeToken<List<T>>() {}.type
-        val data: List<T> = Gson().fromJson(reader, type)
-        reader.close()
-        inputStream.close()
-        data ?: emptyList()
-    } catch (e: Exception) {
-        e.printStackTrace()
-        emptyList()
-    }
-}
 
 fun loadJsonListFromInternal(context: Context, filename: String): List<Place> {
-
-    val file = File(context.filesDir, filename)
-
-    if (!file.exists()) {
-        return emptyList()
+    return try {
+        val file = File(context.filesDir, filename)
+        if (!file.exists() && !File(file.path + ".bak").exists()) return emptyList()
+        JsonParser.parseString(AtomicFiles.read(file)).asJsonArray.mapNotNull { element ->
+            if (!element.isJsonObject) return@mapNotNull null
+            val item = element.asJsonObject
+            fun text(key: String): String? =
+                item.get(key)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+            val id = text("id")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val name = text("name")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            Place(
+                id = id,
+                name = name,
+                address = text("address").orEmpty(),
+                work_time = text("work_time"),
+                category = text("category")?.takeIf { it.isNotBlank() } ?: "Без категории",
+                description = text("description"),
+                image_filename = text("image_filename"),
+                tags = item.get("tags")?.takeIf { it.isJsonArray }?.asJsonArray
+                    ?.mapNotNull { tag ->
+                        tag.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+                    }.orEmpty()
+            )
+        }
+    } catch (e: Exception) {
+        emptyList()
     }
-
-    val json = file.readText()
-
-    val type = object : TypeToken<List<Place>>() {}.type
-    return Gson().fromJson(json, type)
 }

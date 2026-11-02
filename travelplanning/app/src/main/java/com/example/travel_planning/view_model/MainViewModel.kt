@@ -14,7 +14,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.travel_planning.network.Api
 import android.content.Context
-import com.example.travel_planning.network.downloadJson
+import android.util.Log
+import com.example.travel_planning.network.downloadPlacesJson
+import com.example.travel_planning.network.downloadMetroStationsJson
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,33 +40,42 @@ class MainViewModel @Inject constructor(
     private val _isLoadingState = MutableStateFlow(_allPlaces.value.isEmpty())
     val isLoadingState: StateFlow<Boolean> = _isLoadingState
 
+
     fun loadInitialData() {
         viewModelScope.launch {
-            if (_allPlaces.value.isNotEmpty()) {
-                _isLoadingState.value = false
-                return@launch
-            }
-
             _isLoadingState.value = true
-            try {
-                var places = com.example.travel_planning.utils.loadJsonListFromInternal(context, "all_places.json")
-                    .ifEmpty {
-                        com.example.travel_planning.utils.loadJsonListFromAssets(context, "all_places.json")
-                    }
-                _allPlaces.value = places
 
-                val success = downloadJson(api, context, "all_places.json")
+            try {
+                _allPlaces.value =
+                    com.example.travel_planning.utils
+                        .loadJsonListFromInternal(context, "places.json")
+
+                val success = downloadPlacesJson(api, context)
+
                 if (success) {
-                    places = com.example.travel_planning.utils.loadJsonListFromInternal(context, "all_places.json")
-                    _allPlaces.value = places
+                    _allPlaces.value =
+                        com.example.travel_planning.utils
+                            .loadJsonListFromInternal(context, "places.json")
+
+                    Log.d("PLACES", "Места обновлены из PostgreSQL")
+                } else {
+                    Log.e("PLACES", "Не удалось обновить места с сервера")
+                }
+                val metroSuccess = downloadMetroStationsJson(api, context)
+
+                if (metroSuccess) {
+                    Log.d("METRO", "Станции метро обновлены из PostgreSQL")
+                } else {
+                    Log.e("METRO", "Не удалось обновить станции метро с сервера")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("PLACES", "Ошибка загрузки: ${e.message}", e)
             } finally {
                 _isLoadingState.value = false
             }
         }
     }
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 

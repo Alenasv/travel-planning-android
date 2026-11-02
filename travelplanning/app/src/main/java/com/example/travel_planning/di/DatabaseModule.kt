@@ -3,6 +3,7 @@ package com.example.travel_planning.di
 import android.content.Context
 import androidx.room.Room
 import com.example.travel_planning.db.AppDatabase
+import com.example.travel_planning.db.MIGRATION_2_3
 import com.example.travel_planning.db.dao.PlaceDao
 import com.example.travel_planning.db.dao.TripDao
 import dagger.Module
@@ -20,7 +21,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "TravelPlanning.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_2_3)
             .build()
 
     @Provides

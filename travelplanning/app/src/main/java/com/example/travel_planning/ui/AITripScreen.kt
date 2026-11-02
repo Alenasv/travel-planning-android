@@ -47,6 +47,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.os.FileObserver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.example.travel_planning.utils.AtomicFiles
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,28 +78,48 @@ fun AITripScreen(
     uiState: AITripUiState,
     isGenerating: Boolean,
     onBack: () -> Unit,
-    onGenerate: (List<String>, String?, Int) -> Unit
+    onGenerate: (List<String>, String?, Int) -> Unit,
+    generationError: String? = null,
+    onRetry: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val selectedInterests = remember { mutableStateListOf<String>() }
+    var selectedInterests by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
 
-    var metroSearchText by remember { mutableStateOf("") }
-    var selectedMetro by remember { mutableStateOf<String?>(null) }
-    var selectedCount by remember { mutableStateOf<Int?>(null) }
-    val allMetroStations = remember {
-        try {
-            com.example.travel_planning.utils.loadJsonListFromAssets(context, "metro_stations.json")
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList<String>()
+    var metroSearchText by rememberSaveable { mutableStateOf("") }
+    var selectedMetro by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedCount by rememberSaveable { mutableStateOf<Int?>(null) }
+    var allMetroStations by remember { mutableStateOf<List<String>>(emptyList()) }
+    var metroRevision by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(context.filesDir) {
+        val observer = object : FileObserver(context.filesDir.path,
+            CLOSE_WRITE or MOVED_TO or CREATE or DELETE) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path == "metro_stations.json" || path == "metro_stations.json.bak") {
+                    scope.launch { metroRevision++ }
+                }
+            }
+        }
+        observer.startWatching()
+        onDispose { observer.stopWatching() }
+    }
+    LaunchedEffect(metroRevision) {
+        allMetroStations = withContext(Dispatchers.IO) {
+            try {
+                val file = java.io.File(context.filesDir, "metro_stations.json")
+                com.google.gson.JsonParser.parseString(AtomicFiles.read(file)).asJsonArray
+                    .mapNotNull { element ->
+                        element.takeIf { it.isJsonObject }?.asJsonObject?.get("name")
+                            ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+                    }.distinct()
+            } catch (e: Exception) {
+                emptyList()
+            }
         }
     }
-
-    val filteredMetro = remember(metroSearchText, selectedMetro) {
+    val filteredMetro = remember(metroSearchText, selectedMetro, allMetroStations) {
         if (metroSearchText.isEmpty() || selectedMetro != null) emptyList()
-        else allMetroStations.filter {
-            it.contains(metroSearchText, ignoreCase = true)
-        }.take(5)
+        else allMetroStations.filter { it.contains(metroSearchText, ignoreCase = true) }.take(5)
     }
 
     Scaffold(
@@ -126,7 +152,10 @@ fun AITripScreen(
             }
             is AITripUiState.Error -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = uiState.message, color = MaterialTheme.colorScheme.error)
+                        Button(onClick = onRetry) { Text("Повторить") }
+                    }
                 }
             }
             is AITripUiState.Success -> {
@@ -196,16 +225,15 @@ fun AITripScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             uiState.clusters
-                                .filter { cluster ->
-                                    cluster.name == "Интересное" || !cluster.name.contains("интересное", ignoreCase = true)
-                                }
                                 .forEach { cluster ->
                                     val isSelected = cluster.name in selectedInterests
                                     FilterChip(
                                         selected = isSelected,
                                         onClick = {
-                                            if (isSelected) selectedInterests.remove(cluster.name)
-                                            else selectedInterests.add(cluster.name)
+                                            selectedInterests = ArrayList(
+                                                if (isSelected) selectedInterests - cluster.name
+                                                else selectedInterests + cluster.name
+                                            )
                                         },
                                         label = { Text(cluster.name) },
                                         leadingIcon = if (isSelected) {
@@ -247,6 +275,7 @@ fun AITripScreen(
                         }
                     }
 
+                    generationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     AiMagicGenerateButton(
                         enabled = selectedInterests.isNotEmpty() && !isGenerating,
                         onClick = {
@@ -297,7 +326,7 @@ fun AiMagicGenerateButton(enabled: Boolean, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    "Создать  маршрут",
+                    "Подобрать места",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold

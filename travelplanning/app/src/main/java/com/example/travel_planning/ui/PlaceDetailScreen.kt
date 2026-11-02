@@ -72,7 +72,7 @@ fun PlaceDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             if (place != null) {
-                val imageModel = imageFile ?: "https://via.placeholder.com/600x400.png?text=No+Image"
+                val imageModel = imageFile ?: android.R.drawable.ic_menu_gallery
 
                 LazyColumn(
                     state = listState,

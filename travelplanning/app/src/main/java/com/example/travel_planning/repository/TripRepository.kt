@@ -1,6 +1,7 @@
 package com.example.travel_planning.repository
 
 import com.example.travel_planning.db.AppDatabase
+import androidx.room.withTransaction
 import com.example.travel_planning.db.dao.PlaceDao
 import com.example.travel_planning.db.dao.TripDao
 import com.example.travel_planning.db.entities.*
@@ -17,6 +18,7 @@ import javax.inject.Singleton
 
 @Singleton
 class TripRepository @Inject constructor(
+    private val database: AppDatabase,
     private val tripDao: TripDao,
     private val placeDao: PlaceDao
 ) {
@@ -46,25 +48,29 @@ class TripRepository @Inject constructor(
         }
     }
 
-    suspend fun replaceTripPlaces(tripId: Long, places: List<PlaceEntity>) {
-        removeAllPlacesFromTrip(tripId)
-        places.forEach { addPlaceToTrip(tripId, it) }
-    }
+    suspend fun saveTrip(id: Long, name: String, date: String, notes: String, places: List<PlaceEntity>): Long =
+        database.withTransaction {
+            val tripId = if (id == 0L) tripDao.insertTrip(TripEntity(name = name, date = date, notes = notes))
+                else {
+                    tripDao.updateTrip(TripEntity(id_ = id, name = name, date = date, notes = notes))
+                    id
+                }
+            replaceTripPlaces(tripId, places)
+            tripId
+        }
 
-    suspend fun removeAllPlacesFromTrip(tripId: Long) {
-        val tripWithPlaces = getTripWithPlaces(tripId)
-        tripWithPlaces?.places?.forEach { placeEntity ->
-            tripDao.deleteCrossRef(tripId, placeEntity.id_)
+    suspend fun replaceTripPlaces(tripId: Long, places: List<PlaceEntity>) = database.withTransaction {
+        tripDao.deleteAllCrossRefs(tripId)
+        places.distinctBy { it.place_id }.forEachIndexed { position, place ->
+            addPlaceToTrip(tripId, place, position)
         }
     }
 
-    suspend fun deleteTripById(tripId: Long) {
-        val tripWithPlaces = getTripWithPlaces(tripId)
-        tripWithPlaces?.let {
-            it.places.forEach { placeEntity ->
-                tripDao.deleteCrossRef(tripId, placeEntity.id_)
-                placeDao.delete(placeEntity)
-            }
+    suspend fun removeAllPlacesFromTrip(tripId: Long) = tripDao.deleteAllCrossRefs(tripId)
+
+    suspend fun deleteTripById(tripId: Long) = database.withTransaction {
+        tripDao.getTripWithPlaces(tripId)?.let {
+            tripDao.deleteAllCrossRefs(tripId)
             tripDao.deleteTrip(it.trip)
         }
     }
@@ -78,9 +84,11 @@ class TripRepository @Inject constructor(
         return "Новая поездка ${maxNumber + 1}"
     }
 
-    suspend fun getTripWithPlaces(tripId: Long) = tripDao.getTripWithPlaces(tripId)
+    suspend fun getTripWithPlaces(tripId: Long) = database.withTransaction {
+        tripDao.getTripWithPlaces(tripId)?.let { it.copy(places = tripDao.getOrderedPlaces(tripId)) }
+    }
 
-    suspend fun addPlaceToTrip(tripId: Long, place: PlaceEntity) {
+    suspend fun addPlaceToTrip(tripId: Long, place: PlaceEntity, position: Int) {
         val existingPlace = placeDao.getByPlaceId(place.place_id)
         val placeEntity = if (existingPlace != null) {
             existingPlace
@@ -90,8 +98,13 @@ class TripRepository @Inject constructor(
         }
 
         tripDao.insertCrossRef(
-            TripPlaceCrossRef(tripId = tripId, placeId = placeEntity.id_)
+            TripPlaceCrossRef(tripId = tripId, placeId = placeEntity.id_, position = position)
         )
+    }
+
+    suspend fun getPlaceForUI(id: String): Place? = placeDao.getByPlaceId(id)?.let {
+        Place(it.place_id, it.name, it.address, it.work_time, it.category,
+            it.description, it.imageFilename, it.tags.toTags())
     }
 
     suspend fun getTripForUI(tripId: Long): Trip? {

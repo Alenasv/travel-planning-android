@@ -15,7 +15,10 @@ import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
-class PlaceDetailViewModel @Inject constructor() : ViewModel() {
+class PlaceDetailViewModel @Inject constructor(
+    private val drafts: com.example.travel_planning.repository.DraftStore,
+    private val repository: com.example.travel_planning.repository.TripRepository
+) : ViewModel() {
 
     private val _currentPlace = MutableStateFlow<Place?>(null)
     val currentPlace: StateFlow<Place?> = _currentPlace.asStateFlow()
@@ -28,27 +31,18 @@ class PlaceDetailViewModel @Inject constructor() : ViewModel() {
 
     private var isStateChanged = false
 
-    fun initData(context: Context, placeId: String?, initialSelection: Boolean) {
+    fun initData(context: Context, placeId: String?, initialSelection: Boolean, draftId: String? = null) {
         if (_currentPlace.value != null) return
-
         _isSelected.value = initialSelection
-
-        val places: List<Place> = loadJsonListFromInternal(context, "all_places.json")
-        val place = places.find { it.id == placeId }
-        _currentPlace.value = place
-
-        place?.let {
-            val filename = it.image_filename
-            if (filename != null) {
-                val localFile = File(context.filesDir, filename)
-                if (localFile.exists()) {
-                    _imageFile.value = localFile
-                } else {
-                    downloadPlaceImage(context, filename)
-                }
+        viewModelScope.launch {
+            val place = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val draftPlace = draftId?.let { drafts.read(it)?.trip?.places?.find { p -> p.id == placeId } }
+                draftPlace ?: loadJsonListFromInternal(context, "places.json").find { it.id == placeId }
+                    ?: placeId?.let { repository.getPlaceForUI(it) }
             }
+            _currentPlace.value = place
+            place?.image_filename?.takeIf { it.isNotBlank() }?.let { downloadPlaceImage(context, it) }
         }
-
     }
 
     private fun downloadPlaceImage(context: Context, filename: String) {

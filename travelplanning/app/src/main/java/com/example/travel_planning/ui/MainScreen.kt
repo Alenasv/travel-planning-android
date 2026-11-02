@@ -85,9 +85,7 @@ import com.example.travel_planning.db.entities.TripEntity
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
 import com.example.travel_planning.utils.AnimatedListItem
-import com.example.travel_planning.utils.loadJsonListFromAssets
 import com.example.travel_planning.network.downloadImage
-import com.example.travel_planning.network.downloadJson
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import java.io.File
@@ -303,7 +301,6 @@ fun GalleryCard(item: GalleryItem, onClick: () -> Unit) {
     LaunchedEffect(item.imagePath) {
         isLoading = true
         try {
-            val url = "http://45.150.11.208:8000/static/$safePath"
             if (localFile.exists()) {
                 imageFile = localFile
             }

@@ -1,268 +1,147 @@
 package com.example.travel_planning.view_model
 
-import androidx.lifecycle.ViewModel
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.example.travel_planning.repository.DraftStore
+import com.example.travel_planning.repository.TripDraft
 import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.Trip
 import com.example.travel_planning.utils.Place
 import com.example.travel_planning.utils.loadJsonListFromInternal
 import com.example.travel_planning.utils.toEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 @HiltViewModel
 class TripEditViewModel @Inject constructor(
-    private val repository: TripRepository
+    private val repository: TripRepository,
+    private val drafts: DraftStore,
+    private val savedState: SavedStateHandle
 ) : ViewModel() {
-
-    private val _tripState = MutableStateFlow(
-        com.example.travel_planning.ui.Trip(
-            id = 0,
-            title = "",
-            date = "",
-            notes = "",
-            places = emptyList()
-        )
-    )
-    val tripState: StateFlow<Trip> = _tripState.asStateFlow()
-
-    private var originalTrip: Trip? = null
-
-    private val _defaultTitle = MutableStateFlow("")
-    val defaultTitle: StateFlow<String> = _defaultTitle.asStateFlow()
-
+    val draftId = savedState.get<String>("editorDraft")
+        ?: savedState.get<String>("DRAFT_ID")
+        ?: drafts.newId()
+    private val restored = drafts.read(draftId)
+    private val _tripState = MutableStateFlow(restored?.trip ?: Trip(id = 0, title = "", date = "", notes = "", places = emptyList()))
+    val tripState = _tripState.asStateFlow()
+    private var originalTrip = restored?.original
+    private val _defaultTitle = MutableStateFlow(restored?.defaultTitle.orEmpty())
+    val defaultTitle = _defaultTitle.asStateFlow()
     private val _hasReturnedFromChild = MutableStateFlow(false)
-    val hasReturnedFromChild: StateFlow<Boolean> = _hasReturnedFromChild.asStateFlow()
-
+    val hasReturnedFromChild = _hasReturnedFromChild.asStateFlow()
     private val _highlightTitleError = MutableStateFlow(false)
-    val highlightTitleError: StateFlow<Boolean> = _highlightTitleError.asStateFlow()
+    val highlightTitleError = _highlightTitleError.asStateFlow()
+    private var initialized = restored != null
+    private val saveMutex = Mutex()
 
-    suspend fun deleteTrip(tripId: Long) {
-        repository.deleteTripById(tripId)
+    init { savedState["editorDraft"] = draftId }
+
+    @Synchronized
+    private fun setTrip(trip: Trip) {
+        drafts.write(draftId, TripDraft(trip, originalTrip, _defaultTitle.value))
+        _tripState.value = trip
     }
+
+    @Synchronized
+    private fun change(transform: (Trip) -> Trip) = setTrip(transform(_tripState.value))
+
+    suspend fun deleteTrip(tripId: Long) = repository.deleteTripById(tripId)
+
     suspend fun initCreateMode() {
+        if (initialized) return
+        initialized = true
         _defaultTitle.value = repository.getNextDefaultTripName()
-        _tripState.value = Trip(
-            id = 0,
-            title = "",
-            date = "",
-            notes = "",
-            places = emptyList()
-        )
         originalTrip = null
+        setTrip(Trip(id = 0, title = "", date = "", notes = "", places = emptyList()))
     }
 
     suspend fun initEditMode(tripId: Long) {
-        val loaded: Trip? = repository.getTripForUI(tripId)
+        if (initialized) return
+        initialized = true
+        val trip = repository.getTripForUI(tripId) ?: error("Trip not found: $tripId")
+        originalTrip = trip
+        _defaultTitle.value = trip.title
+        setTrip(trip)
+    }
 
-        _tripState.value = loaded ?: Trip(
-            id = tripId,
-            title = "",
-            date = "",
-            notes = "",
-            places = emptyList()
-        )
-
-        originalTrip = _tripState.value
-        _defaultTitle.value = _tripState.value.title
-    }
-    suspend fun saveTrip(mode: String) {
-        if (mode == "AI") {
-            saveCreate()
-        } else {
-            saveEdit()
-        }
-    }
-    fun updateTripTitle(title: String) {
-        _tripState.update { it.copy(title = title) }
-        if (title.isNotBlank()) {
-            _highlightTitleError.value = false
-        }
-    }
     fun loadData(mode: String, tripId: Long) {
-        viewModelScope.launch(Dispatchers.Default) {
-            if (mode == "AI") {
-                val aiPlaces = SelectedPlacesHolder.places.toList()
-                withContext(Dispatchers.Main) {
-                    SelectedPlacesHolder.clear()
-                }
-
-                val converted = aiPlaces.map {
-                    Place(
-                        id = it.id,
-                        name = it.name,
-                        address = it.address ?: "",
-                        work_time = it.work_time ?: "",
-                        category = it.category,
-                        description = "",
-                        image_filename = "",
-                        tags = emptyList()
-                    )
-                }
-
-                initCreateMode()
-                _tripState.update { it.copy(places = converted) }
-            } else {
-                initEditMode(tripId)
-            }
+        viewModelScope.launch {
+            if (mode == "AI") initCreateMode() else initEditMode(tripId)
         }
     }
+
+    suspend fun saveTrip(mode: String) {
+        if (mode == "AI") saveCreate() else saveEdit()
+    }
+
+    fun updateTripTitle(title: String) {
+        change { it.copy(title = title) }
+        if (title.isNotBlank()) _highlightTitleError.value = false
+    }
+    fun updateTripDate(date: String) = change { it.copy(date = date) }
+    fun updateTripNotes(notes: String) = change { it.copy(notes = notes) }
+
+    fun initSelectedPlaces(context: Context, selectedIds: List<String>) {
+        if (initialized) return
+        initialized = true
+        handleSelectedPlaces(context, selectedIds)
+    }
+
     fun handleSelectedPlaces(context: Context, selectedIds: List<String>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val allPlaces: List<Place> = loadJsonListFromInternal(context, "all_places.json")
-            val updatedPlaces = allPlaces.filter { it.id in selectedIds }
-
-            _tripState.update { it.copy(places = updatedPlaces) }
-        }
-    }
-    fun updateTripDate(date: String) {
-        _tripState.update { it.copy(date = date) }
+        val available = (loadJsonListFromInternal(context, "places.json") + _tripState.value.places)
+            .associateBy { it.id }
+        change { it.copy(places = selectedIds.distinct().mapNotNull(available::get)) }
     }
 
-    fun updateTripNotes(notes: String) {
-        _tripState.update { it.copy(notes = notes) }
-    }
     fun handlePlaceDetailResult(context: Context, placeId: String, isSelected: Boolean) {
-        if (!isSelected) {
-            removePlace(placeId)
-        } else {
-            viewModelScope.launch(Dispatchers.IO) {
-                val allPlaces: List<Place> = loadJsonListFromInternal(context, "all_places.json")
-                val place = allPlaces.find { it.id.toString() == placeId }
-                if (place != null) {
-                    addPlace(place)
-                }
-            }
-        }
-    }
-    fun removePlace(placeId: String) {
-        _tripState.update {
-            it.copy(places = it.places.filter { place -> place.id != placeId })
-        }
+        if (!isSelected) removePlace(placeId)
+        else loadJsonListFromInternal(context, "places.json").find { it.id == placeId }?.let(::addPlace)
     }
 
-    fun setPlaces(places: List<Place>) {
-        _tripState.update { it.copy(places = places) }
+    fun removePlace(placeId: String) = change { it.copy(places = it.places.filter { p -> p.id != placeId }) }
+    fun setPlaces(places: List<Place>) = change { it.copy(places = places) }
+    fun addPlace(place: Place) = change {
+        if (it.places.any { p -> p.id == place.id }) it else it.copy(places = it.places + place)
     }
-
-    fun addPlace(place: Place) {
-        _tripState.update {
-            if (it.places.none { p -> p.id == place.id }) {
-                it.copy(places = it.places + place)
-            } else {
-                it
-            }
-        }
-    }
-
-    fun onReturnedFromChild() {
-        _hasReturnedFromChild.value = true
-    }
-
+    fun onReturnedFromChild() { _hasReturnedFromChild.value = true }
     fun validateTitle(): Boolean {
-        val isValid = _tripState.value.title.isNotBlank()
-        _highlightTitleError.value = !isValid
-        return isValid
+        val valid = _tripState.value.title.isNotBlank()
+        _highlightTitleError.value = !valid
+        return valid
     }
-
     fun hasChanges(): Boolean {
         val current = _tripState.value
-        val original = originalTrip ?: return current.title.isNotBlank() ||
-                current.date.isNotBlank() ||
-                current.notes.isNotBlank() ||
-                current.places.isNotEmpty()
-
-        return current.title != original.title ||
-                current.date != original.date ||
-                current.notes != original.notes ||
-                current.places.map { it.id }.toSet() !=
-                original.places.map { it.id }.toSet()
+        return originalTrip?.let { current != it }
+            ?: (current.title.isNotBlank() || current.date.isNotBlank() ||
+                current.notes.isNotBlank() || current.places.isNotEmpty())
     }
+    fun isEmpty(): Boolean = !hasChanges()
 
-    fun isEmpty(): Boolean {
-        val current = _tripState.value
-        return current.title.isBlank() &&
-                current.date.isBlank() &&
-                current.notes.isBlank() &&
-                current.places.isEmpty()
-    }
-
-    suspend fun saveCreate(): Long {
-        val finalTitle = if (_tripState.value.title.isBlank())
-            _defaultTitle.value
-        else
-            _tripState.value.title
-
-        val newTripId = repository.createTrip(
-            finalTitle,
-            _tripState.value.date,
-            _tripState.value.notes
-        )
-
-        if (_tripState.value.places.isNotEmpty()) {
-            repository.replaceTripPlaces(
-                newTripId,
-                _tripState.value.places.map { it.toEntity() }
-            )
+    private suspend fun persist(places: List<Place>? = null): Long = saveMutex.withLock {
+        val trip = _tripState.value.let {
+            it.copy(title = it.title.ifBlank { _defaultTitle.value.ifBlank { "Новая поездка" } },
+                places = places ?: it.places)
         }
-
-        return newTripId
+        val id = repository.saveTrip(trip.id, trip.title, trip.date, trip.notes, trip.places.map { it.toEntity() })
+        val saved = trip.copy(id = id)
+        originalTrip = saved
+        setTrip(saved)
+        id
     }
+    suspend fun saveCreate(): Long = persist()
+    suspend fun saveEdit() { persist() }
+    suspend fun saveWithSelectedPlaces(selectedPlaces: List<Place>): Long = persist(selectedPlaces)
 
-    suspend fun saveEdit() {
-        repository.updateTrip(
-            _tripState.value.id,
-            _tripState.value.title,
-            _tripState.value.date,
-            _tripState.value.notes
-        )
-
-        repository.replaceTripPlaces(
-            _tripState.value.id,
-            _tripState.value.places.map { it.toEntity() }
-        )
-    }
-
-    suspend fun saveWithSelectedPlaces(selectedPlaces: List<Place>): Long {
-        val finalTitle = if (_tripState.value.title.isBlank())
-            _defaultTitle.value
-        else
-            _tripState.value.title
-
-        val newTripId = repository.createTrip(
-            finalTitle,
-            _tripState.value.date,
-            _tripState.value.notes
-        )
-
-        if (selectedPlaces.isNotEmpty()) {
-            repository.replaceTripPlaces(
-                newTripId,
-                selectedPlaces.map { it.toEntity() }
-            )
-        }
-
-        return newTripId
-    }
     suspend fun initFromSelectedPlaces(selectedPlaceIds: List<String>, selectedPlaces: List<Place>) {
-        val defaultName = repository.getNextDefaultTripName()
-        _defaultTitle.value = defaultName
-
-        _tripState.value = Trip(
-            id = 0,
-            title = defaultName,
-            date = "",
-            notes = "",
-            places = selectedPlaces
-        )
-        originalTrip = null
+        if (initialized) return
+        initCreateMode()
+        setTrip(_tripState.value.copy(title = _defaultTitle.value, places = selectedPlaces))
     }
 }

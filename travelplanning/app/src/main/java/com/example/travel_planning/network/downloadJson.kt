@@ -1,32 +1,88 @@
+
 package com.example.travel_planning.network
 
 import android.content.Context
+import com.example.travel_planning.utils.AtomicFiles
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.ResponseBody
 import retrofit2.Response
 import java.io.File
-import retrofit2.awaitResponse
-import okhttp3.Request
 import java.io.FileOutputStream
 
-suspend fun downloadJson(api: Api, context: Context, filename: String): Boolean {
-    return try {
-        val response: Response<ResponseBody> = api.getJson(filename).awaitResponse()
-        if (response.isSuccessful) {
-            val body = response.body()?.string() ?: return false
-            val file = File(context.filesDir, filename)
-            file.writeText(body)
-            Log.d("JSON", "обновлен")
+
+suspend fun downloadPlacesJson(
+    api: Api,
+    context: Context
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPlaces()
+
+            if (!response.isSuccessful) {
+                Log.e("JSON", "Ошибка загрузки: ${response.code()}")
+                return@withContext false
+            }
+
+            val body = response.body()?.string()
+                ?: return@withContext false
+
+            val jsonObject = com.google.gson.JsonParser
+                .parseString(body)
+                .asJsonObject
+
+            val placesArray = jsonObject.getAsJsonArray("places")
+                ?: return@withContext false
+
+            val file = File(context.filesDir, "places.json")
+            AtomicFiles.write(file, placesArray.toString())
+
+            Log.d("JSON", "Места сохранены: ${placesArray.size()}")
+
             true
-        } else {
+        } catch (e: Exception) {
+            Log.e("JSON", "Ошибка загрузки мест: ${e.message}", e)
             false
         }
-    } catch (e: Exception) {
-        Log.e("JSON", "Ошибка ${e.message}")
-        false
+    }
+}
+
+suspend fun downloadMetroStationsJson(
+    api: Api,
+    context: Context
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val response = api.getMetroStations()
+
+            if (!response.isSuccessful) {
+                Log.e("JSON", "Ошибка загрузки станций: ${response.code()}")
+                return@withContext false
+            }
+
+            val body = response.body()?.string()
+                ?: return@withContext false
+
+            val jsonObject = com.google.gson.JsonParser
+                .parseString(body)
+                .asJsonObject
+
+            val stationsArray = jsonObject.getAsJsonArray("stations")
+                ?: return@withContext false
+
+            val file = File(context.filesDir, "metro_stations.json")
+            AtomicFiles.write(file, stationsArray.toString())
+
+            Log.d("JSON", "Станции метро сохранены: ${stationsArray.size()}")
+
+            true
+        } catch (e: Exception) {
+            Log.e("JSON", "Ошибка загрузки станций метро: ${e.message}", e)
+            false
+        }
     }
 }
 
@@ -40,7 +96,7 @@ suspend fun downloadImage(context: Context, relativePath: String): File? {
             val file = File(context.filesDir, cleanPath)
             if (file.exists()) return@withContext file
 
-            val url = "http://45.150.11.208:8000/static/$cleanPath"
+            val url = ServerUrls.image(cleanPath)
 
             val client = OkHttpClient.Builder()
                 .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -56,7 +112,6 @@ suspend fun downloadImage(context: Context, relativePath: String): File? {
 
             file.parentFile?.mkdirs()
             FileOutputStream(file).use { it.write(bytes) }
-
             file
         } catch (e: Exception) {
             e.printStackTrace()

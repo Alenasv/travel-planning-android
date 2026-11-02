@@ -29,7 +29,8 @@ class AddFromTheCategory : ComponentActivity() {
 
         val initialCategory = intent.getStringExtra("CATEGORY") ?: "Все"
 
-        val allPlaces: List<Place> = loadJsonListFromInternal(this, "all_places.json")
+        val allPlaces: List<Place> =
+            loadJsonListFromInternal(this, "places.json")
 
         if (savedInstanceState == null) {
             viewModel.initPlaces(allPlaces)

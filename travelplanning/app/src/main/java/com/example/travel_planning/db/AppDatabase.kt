@@ -13,7 +13,7 @@ import com.example.travel_planning.db.entities.TripPlaceCrossRef
 
 @Database(
     entities = [PlaceEntity::class, TripEntity::class, TripPlaceCrossRef::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(TagConverter::class)

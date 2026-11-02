@@ -1,6 +1,7 @@
 package com.example.travel_planning.db.entities
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 
 @Entity(
     tableName = "trip_place_cross_ref",
@@ -8,5 +9,6 @@ import androidx.room.Entity
 )
 data class TripPlaceCrossRef(
     val tripId: Long,
-    val placeId: Long
+    val placeId: Long,
+    @ColumnInfo(defaultValue = "0") val position: Int = 0
 )
