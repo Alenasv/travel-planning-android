@@ -1,4 +1,4 @@
-package com.example.travel_planning
+package com.example.travel_planning.activity
 
 import AddToRouteScreen
 import android.content.Intent

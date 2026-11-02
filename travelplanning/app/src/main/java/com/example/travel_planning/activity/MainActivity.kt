@@ -1,5 +1,6 @@
-package com.example.travel_planning
+package com.example.travel_planning.activity
 
+import com.example.travel_planning.R
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity

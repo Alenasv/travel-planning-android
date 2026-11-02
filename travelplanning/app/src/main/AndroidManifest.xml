@@ -18,7 +18,7 @@
         android:theme="@style/Theme.Travelplanning"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name=".activity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Travelplanning">
             <intent-filter>
@@ -29,21 +29,21 @@
 
         </activity>
         <activity
-            android:name=".AddTripActivity"
+            android:name=".activity.AddTripActivity"
             android:exported="false" />
         <activity
-            android:name=".AITripActivity"
+            android:name=".activity.AITripActivity"
             android:exported="false" />
         <activity
-            android:name=".AddPlaceActivity"
+            android:name=".activity.AddPlaceActivity"
             android:exported="false" />
-        <activity android:name=".PlaceDetailActivity"
+        <activity android:name=".activity.PlaceDetailActivity"
             android:exported="false" />
-        <activity android:name=".EditTripActivity"
+        <activity android:name=".activity.EditTripActivity"
             android:exported="false" />
-        <activity android:name=".AddFromTheCategory"
+        <activity android:name=".activity.AddFromTheCategory"
             android:exported="false" />
-        <activity android:name=".EditTripFromCategory"
+        <activity android:name=".activity.EditTripFromCategory"
             android:exported="false" />
     </application>
 

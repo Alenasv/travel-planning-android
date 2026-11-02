@@ -1,6 +1,7 @@
-package com.example.travel_planning
+package com.example.travel_planning.activity
 
 import AddToRouteScreen
+import com.example.travel_planning.R
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast

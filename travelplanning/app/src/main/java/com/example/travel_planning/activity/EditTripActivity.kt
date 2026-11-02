@@ -1,58 +1,79 @@
-package com.example.travel_planning
+package com.example.travel_planning.activity
 
+import com.example.travel_planning.R
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.lifecycle.ViewModelProvider
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.example.travel_planning.db.AppDatabase
-import com.example.travel_planning.repository.TripRepository
 import com.example.travel_planning.ui.TripEditScreen
 import com.example.travel_planning.ui.theme.TravelPlanningTheme
-import com.example.travel_planning.utils.Place
+import com.example.travel_planning.utils.DeleteConfirmationDialog
+
 import com.example.travel_planning.utils.UnsavedTripDialog
 import com.example.travel_planning.view_model.TripEditViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class AddTripActivity : ComponentActivity() {
+class EditTripActivity : ComponentActivity() {
     private val viewModel: TripEditViewModel by viewModels()
 
+    private var tripId: Long = -1
 
-    private lateinit var addPlaceLauncher: ActivityResultLauncher<Intent>
-    private lateinit var placeDetailLauncher: ActivityResultLauncher<Intent>
+    private val showDeleteDialog = mutableStateOf(false)
+    private val showUnsavedDialog = mutableStateOf(false)
+
+    private val addPlaceLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val selectedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
+            if (selectedIds != null) {
+                viewModel.handleSelectedPlaces(this, selectedIds)
+            }
+        }
+    }
+
+    private val placeDetailLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val placeId = result.data?.getStringExtra("PLACE_ID")
+            val isSelected = result.data?.getBooleanExtra("IS_SELECTED", true) ?: true
+
+            if (placeId != null && !isSelected) {
+                viewModel.removePlace(placeId)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val mode = intent.getStringExtra("MODE") ?: "EDIT"
+        tripId = intent.getLongExtra("TRIP_ID", -1L)
 
-        setupLaunchers()
 
-        lifecycleScope.launch {
-            viewModel.initCreateMode()
-        }
+        viewModel.loadData(mode, tripId)
 
         setContent {
             TravelPlanningTheme {
-                Surface {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     val trip by viewModel.tripState.collectAsStateWithLifecycle()
-                    val defaultTitle by viewModel.defaultTitle.collectAsStateWithLifecycle()
-                    val hasReturnedFromChild by viewModel.hasReturnedFromChild.collectAsStateWithLifecycle()
-                    val showUnsavedDialog = remember { mutableStateOf(false) }
 
                     TripEditScreen(
                         trip = trip,
-                        isCreateMode = true,
-                        defaultTitle = defaultTitle,
-                        showGeneratedTitle = hasReturnedFromChild,
+                        isCreateMode = (mode == "AI"),
+                        showGeneratedTitle = false,
+                        defaultTitle = "",
                         onTitleChange = { viewModel.updateTripTitle(it) },
                         onDateChange = { viewModel.updateTripDate(it) },
                         onNotesChange = { viewModel.updateTripNotes(it) },
@@ -60,30 +81,35 @@ class AddTripActivity : ComponentActivity() {
                             if (viewModel.hasChanges()) {
                                 showUnsavedDialog.value = true
                             } else {
-                                finish()
-                                overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
+                                intentToMainActivity()
                             }
                         },
                         onSaveTrip = {
                             lifecycleScope.launch {
-                                viewModel.saveCreate()
+                                viewModel.saveTrip(mode)
                                 intentToMainActivity()
                             }
                         },
                         onAddPlaceClick = {
-                            val intent = Intent(this@AddTripActivity, AddPlaceActivity::class.java)
-                            intent.putStringArrayListExtra(
-                                "SELECTED_PLACE_IDS",
-                                ArrayList(trip.places.map { it.id })
-                            )
+                            val intent = Intent(
+                                this@EditTripActivity,
+                                AddPlaceActivity::class.java
+                            ).apply {
+                                putExtra("TRIP_ID", tripId)
+                                putStringArrayListExtra(
+                                    "SELECTED_PLACE_IDS",
+                                    ArrayList(trip.places.map { it.id })
+                                )
+                            }
                             addPlaceLauncher.launch(intent)
+                            overridePendingTransition(R.anim.fade_in_fast, R.anim.fade_out_fast)
                         },
                         onRemovePlaceClick = { placeId ->
                             viewModel.removePlace(placeId)
                         },
                         onPlaceClick = { place ->
                             val intent = Intent(
-                                this@AddTripActivity,
+                                this@EditTripActivity,
                                 PlaceDetailActivity::class.java
                             ).apply {
                                 putExtra("PLACE_ID", place.id)
@@ -93,15 +119,33 @@ class AddTripActivity : ComponentActivity() {
                             }
                             placeDetailLauncher.launch(intent)
                         },
-                        deleteTrip = {}
+                        deleteTrip = {
+                            showDeleteDialog.value = true
+                        }
                     )
+
+                    if (showDeleteDialog.value) {
+                        DeleteConfirmationDialog(
+                            title = "Вы уверены, что хотите удалить?",
+                            onConfirm = {
+                                lifecycleScope.launch {
+                                    viewModel.deleteTrip(tripId)
+                                    showDeleteDialog.value = false
+                                    intentToMainActivity()
+                                }
+                            },
+                            onDismiss = {
+                                showDeleteDialog.value = false
+                            }
+                        )
+                    }
 
                     if (showUnsavedDialog.value) {
                         UnsavedTripDialog(
                             onSave = {
                                 showUnsavedDialog.value = false
                                 lifecycleScope.launch {
-                                    viewModel.saveCreate()
+                                    viewModel.saveTrip(mode)
                                     intentToMainActivity()
                                 }
                             },
@@ -114,33 +158,6 @@ class AddTripActivity : ComponentActivity() {
                             }
                         )
                     }
-                }
-            }
-        }
-    }
-
-    private fun setupLaunchers() {
-        addPlaceLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val updatedIds = result.data?.getStringArrayListExtra("SELECTED_PLACE_IDS")
-                if (updatedIds != null) {
-                    viewModel.handleSelectedPlaces(this, updatedIds)
-                    viewModel.onReturnedFromChild()
-                }
-            }
-        }
-
-        placeDetailLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val placeId = result.data?.getStringExtra("PLACE_ID")
-                val isSelected = result.data?.getBooleanExtra("IS_SELECTED", true) ?: true
-
-                if (placeId != null && !isSelected) {
-                    viewModel.removePlace(placeId)
                 }
             }
         }
